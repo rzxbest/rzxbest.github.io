@@ -3,12 +3,12 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Hexo
-subtitle: ''
+title: 随记
+subtitle: '记一记,所学,温故而知新'
 description: ''
-keywords:
-author: John Doe
-language: en
+keywords: JAVA开发
+author: Ren zheng xiao
+language: zh
 timezone: ''
 
 # URL
