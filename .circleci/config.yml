@@ -37,7 +37,7 @@ jobs:
       - run: npm run build
       - add_ssh_keys:
               fingerprints: 
-                - "b7:7e:5a:0d:92:7b:51:a1:8f:56:a6:39:08:1d:c8:e9"    
+                - "1a:d3:ae:d9:d5:b9:58:26:a6:ad:0e:bd:9d:d2:60:39"    
       - deploy:
           command: |
             git config --global user.email circle@qq.com
