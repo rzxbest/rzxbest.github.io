@@ -104,4 +104,4 @@ theme: landscape
 deploy:
   type: 'git'
   repo: 'git@github.com:rzxbest/rzxbest.github.io.git'
-  branch: 'gh_pages'
+  branch: 'gh-pages'
