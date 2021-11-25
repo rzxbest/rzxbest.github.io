@@ -39,5 +39,15 @@ date: 2021-11-24 16:14:00
 
 **对象对齐**：(对象尾 + padding) % 8 = 0 ; 0 < padding < 8
 
+## 查看普通java对象的内部布局工具
+
+```
+<dependency>
+	<groupId>org.openjdk.jol</groupId>
+	<artifactId>jol-core</artifactId>
+	<version>0.9</version>
+</dependency>
+```
+
 
 
