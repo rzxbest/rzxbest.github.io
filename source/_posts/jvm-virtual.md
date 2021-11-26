@@ -105,21 +105,118 @@ jdk1.8默认开启
 
 4. 动态年龄判断 ：年龄1+...年龄n > survivor区大小50% 那么年龄大于n的对象直接进入老年代
 
-5. 老年代空间担保机制
+5. 老年代空间担保机制 -XX:-HandlePromotionFailure 1.8默认设置
 
    ![image-20211126100653589](image-20211126100653589.png)
 
-#### 垃圾回收算法
+#### 如何判断对象可以被回收？
 
 - 引用计数器：计数为0 可以回收，存在问题就是循环依赖，A对象一属性依赖B B对象一属性依赖A
-
 - 可达性分析算法：GCRoot根，遍历GCroot根
 
   - 线程栈局部变量
   - 静态变量
   - 本地方法栈变量
 
+
+#### 如何判断一个类时无用类？
+
+- 类的所有实例被回收
+- 加载该类的classloader被回收
+- 该类对应的java.lang.class对象任何地方没有被引用，Class..forName()
+
+#### 当对象第一次被标记为垃圾对象，如何拯救对象变为正常对象？
+
+重写finalize方法，重新建立引用关系，第二次标记回调用该对象的finalize方法
+
+#### 垃圾回收算法
+
+1. 标记清除：标记需回收的对象，然后一个一个清理
+   - 效率较低
+   - 空间利用率低，清除后产生不连续碎片
+2. 复制算法：内存分为两块，分配对象使用其中一块，垃圾回收时，将存活对象复制到另一块，剩余一次性清理掉
+   - 效率快
+   - 空间利用率低
+   - 一般来说年轻代使用复制算法
+3. 标记整理算法：标记出垃圾对象，将存活对象向一端移动，然后清理端边界以外的内存
+4. 分代收集算法：年轻代和老年代使用不同垃圾收集算法
+
+#### 垃圾收集器
+
+##### Serial收集器
+
+|        |      使用参数       |     算法     |
+| :----: | :-----------------: | :----------: |
+| 年轻代 |  -XX:+UseSerialGC   |   复制算法   |
+| 老年代 | -XX:+UseSerialOldGC | 标记整理算法 |
+
+说明：单线程收集，收集时必须暂停应用程序线程 stw
+
+优点：
+
+- 简单高效
+
+缺点：
+
+- 对多核cpu来说 效率不高
+
+
+
+##### ParNew收集器
+
+说明：是Serial收集器的多线程版本
+
+XX:+UseParNewGC，打开该开关后，使用ParNew(年轻代)+Serial Old(老年代)组合进行GC。另外，ParNew是CMS收集器的默认年轻代收集器。
+
+老年代使用标记整理算法，年轻代是复制算法
+
+ParNew用于垃圾回收的线程可用参数**-XX:ParallelGCThreads=n**进行配置,建议n与主机逻辑cpu数一致。
+
+#### ParallelScavenge收集器
+
+是内存大于2G，2个cpu下的默认收集器
+
+说明：关注吞吐量，关注用户线程的停顿时间
+
+所谓吞吐量，就是cpu用于执行用户代码时间与cpu消耗时间的比值
+
+|        |       使用参数        |     算法     |
+| :----: | :-------------------: | :----------: |
+| 年轻代 |  -XX:+UseParallelGC   |   复制算法   |
+| 老年代 | -XX:+UseParallelOldGC | 标记整理算法 |
+
+#### CMS收集器
+
+相关参数：
+
+- -XX:+UseConcMarkSweepGC 启动cms
+- -XX:ConcGCThreads 并发GC的线程数
+- -XX:+UseCMSCompactAtFullCollection fullgc之后做压缩整理
+- -XX:+CMSFullGCsBeforeCompaction 几次fullgc做一次压缩，默认是0
+- -XX:CMSInitiatingOccupancyFraction 老年代使用达到该比例出发fullgc 默认是92，百分比
+- -XX:+UseCMSInitiatingOccupancyOnly 只使用设定的回收阈值(- XX:CMSInitiatingOccupancyFraction设定的值) 如果没有指定这个值，只有第一次使用指定值，后续自动调整
+- -XX:+CMSScavengeBeforeRemark  在fullgc之前先minor gc一次，目的在于减少老年代对年轻代的引用，降低cms gc 标记阶段开销，一般cms的gc耗时80%都在remark阶段
+
+cms收集器步骤：
+
+1. 初始标记：STW 记录gcRoot根直接引用的对象 速度很快
+2. 并发标记：NO STW 全链路标记gcRoot ，耗时长
+3. 重新标记：STW 修正并发标记应用程序运行导致标记产生变动的对象，比初始标记稍微耗时长一点
+4. 并发清理：NO STW 清理
+
+cms收集器的缺陷：
+
+- 产生浮动垃圾，并发清理又产生垃圾
+
+- cpu资源抢占
+
+- 使用标记清除算法，产生碎片
+
+- 在执行gc过程中，一边标记/回收，一边产生新的垃圾，可能导致再一次的fullgc ,此时会进入stw,使用serial收集器收集
+
   
+
+
 
 
 
