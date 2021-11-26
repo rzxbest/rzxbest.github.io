@@ -51,7 +51,7 @@ footer:
   icon: user
 
   # If not defined, will be used `author` from Hexo main config.
-  copyright:
+  copyright: 苏ICP备14022081号-4
   # -------------------------------------------------------------
   # Hexo link (Powered by Hexo).
   powered: true
@@ -230,9 +230,9 @@ post_meta:
 # Dependencies: https://github.com/willin/hexo-wordcount
 post_wordcount:
   item_text: true
-  wordcount: false
-  min2read: false
-  totalcount: false
+  wordcount: true
+  min2read: true
+  totalcount: true
   separated_meta: true
 
 # Wechat Subscriber
@@ -250,8 +250,8 @@ post_wordcount:
 # Declare license on posts
 post_copyright:
   enable: false
-  license: CC BY-NC-SA 3.0
-  license_url: https://creativecommons.org/licenses/by-nc-sa/3.0/
+  license: 苏ICP备14022081号-4
+  license_url: https://beian.miit.gov.cn/
 
 
 # ---------------------------------------------------------------
