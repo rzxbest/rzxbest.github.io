@@ -75,7 +75,7 @@ tomcat类加载打破
 
 注意：
 
-- ​	每个war包都有一个webAppClassLoader加载
+- 每个war包都有一个webAppClassLoader加载
 -    早期tomcat有common、server、 shared目录 分别对应CommonClassLoader,CatalinaClassLoader,SharedClassLoader
 
 ### 类加载器如何为parent赋值？
