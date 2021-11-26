@@ -1,7 +1,7 @@
 ---
 title: JAVA 对象占内存情况分析
-tags: []
-categories: []
+tags: [内存,java]
+categories: [java对象]
 date: 2021-11-24 16:14:00
 ---
 ## 对象组成结构
