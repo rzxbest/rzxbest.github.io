@@ -2,6 +2,7 @@
 title:  LJ6质数因子
 tags: [面试题]
 categories: [华为面试题]
+top: 6
 date: 2021-11-28 21:33:00
 ---
 # 质数因子

@@ -2,6 +2,7 @@
 title:  LJ5进制转换
 tags: [面试题]
 categories: [华为面试题]
+top: 5
 date: 2021-11-28 10:33:00
 ---
 # 进制转换
