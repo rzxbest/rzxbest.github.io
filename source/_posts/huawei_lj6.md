@@ -33,10 +33,14 @@ public class Main {
                 input = input / i;
             }
         }
+        if (input > 1 ){
+            System.out.print(input + " ");
+        }
     }
 
 
 }
+
 
 
 ```
