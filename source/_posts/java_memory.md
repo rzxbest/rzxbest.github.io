@@ -48,6 +48,79 @@ date: 2021-11-24 16:14:00
 	<version>0.9</version>
 </dependency>
 ```
+对象大小测试 java代码
+```
+import org.openjdk.jol.info.ClassLayout;
+public class Main   {
+    public static void main(String[] args) {
+        System.out.println(ClassLayout.parseInstance(new Object()).toPrintable());
+    }
+}
+```
+开启指针压缩 -XX:+UseCompressedOops
+```
+java.lang.Object object internals:
+ OFFSET  SIZE   TYPE DESCRIPTION                               VALUE
+      0     4        (object header)                           01 00 00 00 (00000001 00000000 00000000 00000000) (1)
+      4     4        (object header)                           00 00 00 00 (00000000 00000000 00000000 00000000) (0)
+      8     4        (object header)                           28 0f 00 00 (00101000 00001111 00000000 00000000) (3880)
+     12     4        (loss due to the next object alignment)
+Instance size: 16 bytes
+Space losses: 0 bytes internal + 4 bytes external = 4 bytes total
+```
+由此可见 上述第三个 object header 为kclass指针，占用空间4bytes
+
+关闭指针压缩-XX:-UseCompressedOops 
+```
+java.lang.Object object internals:
+ OFFSET  SIZE   TYPE DESCRIPTION                               VALUE
+      0     4        (object header)                           01 00 00 00 (00000001 00000000 00000000 00000000) (1)
+      4     4        (object header)                           00 00 00 00 (00000000 00000000 00000000 00000000) (0)
+      8     4        (object header)                           00 1c 1c 12 (00000000 00011100 00011100 00010010) (303832064)
+     12     4        (object header)                           01 00 00 00 (00000001 00000000 00000000 00000000) (1)
+Instance size: 16 bytes
+Space losses: 0 bytes internal + 0 bytes external = 0 bytes total
+```
+由此可见，上述第三个第四个objectheader 为Klass指针，占用空间8bytes
+
+数组对象测试 java代码
+```
+import org.openjdk.jol.info.ClassLayout;
+public class Main   {
+    public static void main(String[] args) {
+        System.out.println(ClassLayout.parseInstance(new Object[10]).toPrintable());
+    }
+}
+```
+指针压缩情况下输出
+```
+[Ljava.lang.Object; object internals:
+ OFFSET  SIZE               TYPE DESCRIPTION                               VALUE
+      0     4                    (object header)                           01 00 00 00 (00000001 00000000 00000000 00000000) (1)
+      4     4                    (object header)                           00 00 00 00 (00000000 00000000 00000000 00000000) (0)
+      8     4                    (object header)                           60 1a 01 00 (01100000 00011010 00000001 00000000) (72288)
+     12     4                    (object header)                           0a 00 00 00 (00001010 00000000 00000000 00000000) (10)
+     16    40   java.lang.Object Object;.<elements>                        N/A
+Instance size: 56 bytes
+Space losses: 0 bytes internal + 0 bytes external = 0 bytes total
+```
+由此可见 第四个header为数组长度，同时reference类型占用4bytes
+
+关闭指针压缩情况下输出
+```
+[Ljava.lang.Object; object internals:
+ OFFSET  SIZE               TYPE DESCRIPTION                               VALUE
+      0     4                    (object header)                           01 00 00 00 (00000001 00000000 00000000 00000000) (1)
+      4     4                    (object header)                           00 00 00 00 (00000000 00000000 00000000 00000000) (0)
+      8     4                    (object header)                           d8 9c 3a 16 (11011000 10011100 00111010 00010110) (372939992)
+     12     4                    (object header)                           01 00 00 00 (00000001 00000000 00000000 00000000) (1)
+     16     4                    (object header)                           0a 00 00 00 (00001010 00000000 00000000 00000000) (10)
+     20     4                    (alignment/padding gap)                  
+     24    80   java.lang.Object Object;.<elements>                        N/A
+Instance size: 104 bytes
+Space losses: 4 bytes internal + 0 bytes external = 4 bytes total
+```
+由此可见，第五个为header为数组长度，同时reference类型占用8bytes
 
 
 
