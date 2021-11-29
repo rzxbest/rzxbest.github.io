@@ -1,8 +1,8 @@
 ---
-title: LJ1提取不重复的数
+title: LJ9提取不重复的数
 tags: [面试题]
 categories: [华为面试题]
-top: 1
+top: 9
 date: 2021-11-28 9:10:00
 ---
 # 提取不重复的数
