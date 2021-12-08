@@ -14,7 +14,7 @@ date: 2021-12-8 16:14:00
 
 <table>
 <tr>
-<th rowspan="2">锁状态</th> <th colspan="2">25bit</th> <th rowspan="2">4bit</th> <th>1bit</th> <th>1bit</th>
+<th rowspan="2">锁状态</th> <th colspan="2">25bit</th> <th rowspan="2">4bit</th> <th>1bit</th> <th>2bit</th>
 </tr>
 <tr>
  <th>23bit</th> <th >2bit</th> <th>是否偏向锁</th> <th>锁标志位</th>
@@ -33,6 +33,30 @@ date: 2021-12-8 16:14:00
 </tr>
 <tr>
  <td>GC标记</td>  <td colspan="4">空</td> <td>11</td>
+</tr>
+</table>
+
+
+## 64位系统
+
+<table>
+<tr>
+<th >锁状态</th> <th colspan="4">61bit</th> <th >是否偏向锁 1bit</th> <th>锁标志 2bit</th>
+</tr>
+<tr>
+ <td>无锁</td> <td>unused 25bit</td> <td >对象的hashcode 31bit</td> <td>unused 1bit </td> <td>分代年龄 4bit</td> <td>0</td> <td>01</td>
+</tr>
+<tr>
+ <td>偏向锁</td>  <td>线程ID 54bit</td> <td>Epoch 2bit </td> <td>unused 1bit </td> <td>分代年龄 4bit</td>  <td>1</td> <td>01</td>
+</tr>
+<tr>
+ <td>轻量级锁</td>  <td colspan="5">指向栈中的锁记录的指针</td> <td>00</td>
+</tr>
+<tr>
+ <td>重量级锁</td>  <td colspan="5">指向重量级锁的指针</td> <td>10</td>
+</tr>
+<tr>
+ <td>GC标记</td>  <td colspan="5">空</td> <td>11</td>
 </tr>
 </table>
 
