@@ -14,10 +14,10 @@ date: 2021-12-8 16:14:00
 
 <table>
 <tr>
-<td rowspan="2">锁状态</td> <td colspan="2">25bit</td> <td rowspan="2">4bit</td> <td>1bit</td> <td>1bit</td>
+<th rowspan="2">锁状态</th> <th colspan="2">25bit</th> <th rowspan="2">4bit</th> <th>1bit</th> <th>1bit</th>
 </tr>
 <tr>
- <td>23bit</td> <td >2bit</td> <td>是否偏向锁</td> <td>锁标志位</td>
+ <th>23bit</th> <th >2bit</th> <th>是否偏向锁</th> <th>锁标志位</th>
 </tr>
 <tr>
  <td>无锁</td>  <td colspan="2">对象的hashcode</td> <td>分代年龄</td> <td>0</td> <td>01</td>
