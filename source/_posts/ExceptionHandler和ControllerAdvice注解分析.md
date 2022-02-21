@@ -198,6 +198,7 @@ protected ModelAndView processHandlerException(HttpServletRequest request, HttpS
 	- 对返回的getExceptionHandlerMethod方法返回值进行判断
 		- 不为空 exceptionHandlerMethod.invokeAndHandle(webRequest, mavContainer, arguments);
 		- 为空 return null
+	
 ```
 protected ModelAndView doResolveHandlerMethodException(HttpServletRequest request,
 			HttpServletResponse response, @Nullable HandlerMethod handlerMethod, Exception exception) {
