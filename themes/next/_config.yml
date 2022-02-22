@@ -252,7 +252,7 @@ tag_icon: false
 
 # Donate (Sponsor) settings
 # Front-matter variable (nonsupport animation).
-reward_settings:
+reward_settings
   # If true, a donate button will be displayed in every article by default.
   enable: enable
   animation: false
