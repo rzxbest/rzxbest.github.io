@@ -136,7 +136,7 @@ private void initControllerAdviceCache() {
 - invokeHandlerMethod 方法中getModelFactory方法获取ModelAttribute注解的方法
 - 调用ModelFactory对象的initModel方法，initModel方法中调用invokeModelAttributeMethods方法，调用@ModelAttribute注解的方法
 - 调用ModelFactory对象的initModel方法，initModel方法中调用findSessionAttributeArguments方法，对@ModelAttribute注解的参数赋值
--- invocableMethod.invokeAndHandle(webRequest, mavContainer)，在这个方法中调用invokeForRequest(),invokeForRequest()中调用getMethodArgumentValues()方法对参数进行了绑定
+- invocableMethod.invokeAndHandle(webRequest, mavContainer)，在这个方法中调用invokeForRequest(),invokeForRequest()中调用getMethodArgumentValues()方法对参数进行了绑定
 
 ## getDataBinderFactory方法 getModelFactory方法
 
