@@ -1,4 +1,10 @@
+---
+title: sentinel
+date: 2021-11-25 19:20:47
+tags: [Springcloud]
+categories: [Springcloud]
 
+---
 # sentinel
 ## 添加依赖
 - 在pom文件中dependencyManagement里添加依赖
