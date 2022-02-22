@@ -88,9 +88,9 @@ management.endpoints.web.discovery.enabled=true
 ```
 
 - 需用使用配置的类加@RefreshScope 
-  ![springcloudconfig/img_3.png](springcloudconfig/img_3.png)
+  ![img_3.png](img_3.png)
 - Post请求接口
-  ![springcloudconfig/img_2.png](springcloudconfig/img_2.png)
+  ![img_2.png](img_2.png)
 
 ## 自动刷新,利用git webhook
   - 安装rabbitmq
@@ -139,6 +139,6 @@ management.endpoints.web.discovery.enabled=true
     ```
   - 需要刷新的配置类加@RefreshScope
   - 配置configserver bus-refresh webhook
-    ![springcloudconfig/img.png](springcloudconfig/img.png)
+    ![img.png](img.png)
     http://localhost:8768/actuator/bus-refresh
-    ![springcloudconfig/img_1.png](springcloudconfig/img_1.png)
+    ![img_1.png](img_1.png)
