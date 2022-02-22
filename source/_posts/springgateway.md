@@ -47,7 +47,7 @@ eureka.client.serviceUrl.defaultZone:http://${eureka.instance.hostname}:8761/eur
 ```
 spring.cloud.gateway.discovery.locator.enabled=true
 ```
-![gateway/img.png](gateway/img.png)
+![springgateway/img.png](springgateway/img.png)
 
 ## predicates断言路由
 - 在网关配置中加入以下配置
@@ -56,7 +56,7 @@ spring.cloud.gateway.routes[0].id= 1
 spring.cloud.gateway.routes[0].uri=http://localhost:8760
 spring.cloud.gateway.routes[0].predicates[0]=Path=/demo/**
 ```
-![gateway/img2.png](gateway/img2.png)
+![springgateway/img2.png](springgateway/img2.png)
 
 ## 过滤器
 - 加入以下配置
@@ -66,13 +66,13 @@ spring.cloud.gateway.routes[0].filters[0].name=AddRequestParameter
 spring.cloud.gateway.routes[0].filters[0].args[name]=token
 spring.cloud.gateway.routes[0].filters[0].args[value]=abcdef
 ```
-![gateway/img11.png](gateway/img11.png)
+![springgateway/img11.png](springgateway/img11.png)
 
 ## 过滤器对结果进行处理
 - 对结果进行处理
 - 官方文档提供的 modifyResponseBody过滤器
 
-![gateway/img12.png](gateway/img12.png)
+![springgateway/img12.png](springgateway/img12.png)
 
 添加Java配置
 ```
@@ -97,7 +97,7 @@ return gatewayFilterSpec;
 ```
 结果
 
-![gateway/img13.png](gateway/img13.png)
+![springgateway/img13.png](springgateway/img13.png)
 
 
 ## 全局过滤器
@@ -118,8 +118,8 @@ public GlobalFilter a() {
 }
 ```
 或者实现GlobalFilter、 Order接口
-![gateway/img14.png](gateway/img14.png)
-![gateway/img15.png](gateway/img15.png)
+![springgateway/img14.png](springgateway/img14.png)
+![springgateway/img15.png](springgateway/img15.png)
 ## 接入actuator
 ### 添加依赖
 ```

@@ -6,7 +6,7 @@ categories: [Springcloud]
 top: 21
 ---
 
-#config
+# config
 
 ## Config server
 ### 添加依赖
@@ -88,9 +88,9 @@ management.endpoints.web.discovery.enabled=true
 ```
 
 - 需用使用配置的类加@RefreshScope 
-  ![config/img_3.png](config/img_3.png)
+  ![springcloudconfig/img_3.png](springcloudconfig/img_3.png)
 - Post请求接口
-  ![config/img_2.png](config/img_2.png)
+  ![springcloudconfig/img_2.png](springcloudconfig/img_2.png)
 
 ## 自动刷新,利用git webhook
   - 安装rabbitmq
@@ -139,6 +139,6 @@ management.endpoints.web.discovery.enabled=true
     ```
   - 需要刷新的配置类加@RefreshScope
   - 配置configserver bus-refresh webhook
-    ![config/img.png](config/img.png)
+    ![springcloudconfig/img.png](springcloudconfig/img.png)
     http://localhost:8768/actuator/bus-refresh
-    ![config/img_1.png](config/img_1.png)
+    ![springcloudconfig/img_1.png](springcloudconfig/img_1.png)
