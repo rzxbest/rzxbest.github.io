@@ -5,9 +5,9 @@ tags: [Springcloud]
 categories: [Springcloud]
 top: 21
 ---
-#gateway
+# gateway
 
-##文档地址
+## 文档地址
 - https://cloud.spring.io/spring-cloud-static/spring-cloud-gateway/2.1.0.RELEASE/multi/multi_spring-cloud-gateway.html
 
 ## Springcloud通用配置
@@ -32,7 +32,6 @@ eureka.client.serviceUrl.defaultZone:http://${eureka.instance.hostname}:8761/eur
 ```
 
 - 网关配置
-
 ```
 server.port=8088
 spring.application.name=CLOUD-GATEWAY
@@ -60,7 +59,6 @@ spring.cloud.gateway.routes[0].predicates[0]=Path=/demo/**
 
 ## 过滤器
 - 加入以下配置
-
 ```
 spring.cloud.gateway.routes[0].filters[0].name=AddRequestParameter
 spring.cloud.gateway.routes[0].filters[0].args[name]=token
