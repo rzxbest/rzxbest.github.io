@@ -85,3 +85,18 @@ Kafka是非常适合这种场景的。
 - 数据路由:怎么知道访问哪个Broker？
     有一个NameServer的概念，他也是独立部署在几台机器上的，然后所有的Broker都会把自己注册到NameServer上去，NameServer不就知道集群里有哪些Broker了？
   
+### RocketMQ NameServer设计原理
+- NameServer到底可以部署几台机器？
+    NameServer支持部署多台机器的,NameServer可以集群化部署的，
+    那为什么NameServer要集群化部署？ 最主要的一个原因，就是高可用性。
+    NameServer是集群里非常关键的一个角色，管理Broker信息，别人都要通过他才知道跟哪个Broker通信。
+    NameServer多机器部署，集群，高可用，保证任何一台机器宕机,其他机器上的NameServer可以继续对外提供服务 
+- Broker在启动的时候是把自己的信息注册到哪个NameServer上去的？
+    每个Broker启动都得向所有的NameServer进行注册
+    比如一共有10台Broker机器，2个NameServer机器，然后其中5台Broker会把自己的信息注册到1个NameServer上去，另外5台Broker会把自己的信息注册到另外1个NameServer上去。这样搞有一个最大的问题，如果1台NameServer上有5个Broker的信息，另外1个NameServer上有另外5个Broker的信息，那么此时 任何一个NameServer宕机了，不就导致5个Broker的信息就没了吗
+- 扮演生产者和消费者的系统们，如何从NameServer那儿获取到集群的Broker信息呢？
+  知道集群里有哪些Broker，根据一定的算法挑选一个Broker去发送消息或者获取消息
+  第一种办法是这样，NameServer那儿会主动发送请求给所有的系统，告诉他们Broker信息。
+    NameServer无法知道要推送Broker信息给哪些系统
+  第二种办法是这样的，每个系统自己每隔一段时间，定时发送请求到NameServer去拉取最新的集群Broker信息。
+    RocketMQ中的生产者和消费者就是这样，自己主动去NameServer拉取Broker信息
