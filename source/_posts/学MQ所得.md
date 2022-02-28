@@ -80,7 +80,7 @@ Kafka是非常适合这种场景的。
     每台机器上部署的RocketMQ进程一般称之为Broker，每个Broker都会收到不同的消息，然后就会把这批消息存储在自己本地的磁盘文件里
 - 高可用保障:万一Broker宕机了怎么办？
     Broker主从架构以及多副本策略
-    ![img.png](img.png)
+    ![img.png](bimg.png)
     Master Broker收到消息后会同步给Slave Broker,这个时候如果任何一个Master Broker出现故障，还有一个Slave Broker上有一份数据副本，可以保证数据不丢失，还能继续对外提供服务，保证了MQ的可靠性和高可用性
 - 数据路由:怎么知道访问哪个Broker？
     有一个NameServer的概念，他也是独立部署在几台机器上的，然后所有的Broker都会把自己注册到NameServer上去，NameServer不就知道集群里有哪些Broker了？
