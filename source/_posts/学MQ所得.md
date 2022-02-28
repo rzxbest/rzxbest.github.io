@@ -127,4 +127,13 @@ Kafka是非常适合这种场景的。
 - 如果Slave Broke挂掉了有什么影响？
     有一点影响，但是影响不太大
     消息写入全部是发送到Master Broker的，消息获取也可以走Master Broker，只不过有一些消息获取可能是从Slave Broker 去走的。所以如果Slave Broker挂了，那么此时无论消息写入还是消息拉取，还是可以继续从Master Broke去走，对整体运行不影响。
-    只不过少了Slave Broker，会导致所有读写压力都集中在Master Broker上。
+    只不过少了Slave Broker，会导致所有读写压力都集中在Master Broker上。 
+- 如果Master Broker挂掉了该怎么办？
+    对消息的写入和获取都有一定的影响了。但是其实本质上而言，Slave Broker也是跟Master Broker一样有一份数据在的，
+    只不过Slave Broker上的数据可能有部分没来得及从Master Broker同步。
+    此时RocketMQ可以实现直接自动将Slave Broker切换为Master Broker吗？不能
+    Master-Slave模式不是彻底的高可用模式，他没法实现自动把Slave切换为Master
+- 基于Dledger实现RocketMQ高可用自动切换
+  RocketMQ 4.5之后，RocketMQ支持了一种基于Raft协议实现的一个机制，叫做Dledger,,Dledger融入RocketMQ之后，可以让一个Master Broker对应多个Slave Broker，也就是说一份数据可以有多份副本，比如一个Master Broker对应两个Slave Broker。
+  此时一旦Master Broker宕机了，就可以在多个副本，也就是多个Slave中，通过Dledger技术和Raft协议算法进行leader选举，直接将一个Slave Broker选举为新的Master Broker，然后这个新的Master Broker就可以对外提供服务了。整个过程也许只要10秒或者几十秒的时间就可以完成，这样的话，就可以实现Master Broker挂掉之后，自动从多个Slave Broker中选举出来一个新的Master Broker，继续对外服务，一切都是自动的。
+![img.png](dimg.png)
