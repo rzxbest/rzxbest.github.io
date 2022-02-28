@@ -100,3 +100,12 @@ Kafka是非常适合这种场景的。
     NameServer无法知道要推送Broker信息给哪些系统
   第二种办法是这样的，每个系统自己每隔一段时间，定时发送请求到NameServer去拉取最新的集群Broker信息。
     RocketMQ中的生产者和消费者就是这样，自己主动去NameServer拉取Broker信息
+- 如果Broker挂了，NameServer是怎么感知到的？
+    Broker跟NameServer之间的心跳机制，Broker会每隔30s给所有的NameServer发送心跳，告诉每个NameServer自己目前还活着。
+    NameServer会每隔10s运行一个任务，去检查一下各个Broker的最近一次心跳时间，如果某个Broker超过120s都没发送心跳了，则认为这个Broker挂掉了
+- Broker挂了，系统是怎么感知到的？
+    可能某个系统就会发送消息到那个已经挂掉的Broker上去，此时是绝对不可能成功发送消息的
+    可以考虑不发送消息到那台Broker，改成发到其他Broker上去。
+    你必须要发送消息给那台Broker，Slave机器是一个备份，可以继续使用，可以考虑Slave进行通信
+    系统又会重新从NameServer拉取最新的路由信息了，此时就会知道有一个Broker已经宕机了。
+![img.png](cimg.png)
