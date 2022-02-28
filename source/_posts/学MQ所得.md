@@ -109,3 +109,21 @@ Kafka是非常适合这种场景的。
     你必须要发送消息给那台Broker，Slave机器是一个备份，可以继续使用，可以考虑Slave进行通信
     系统又会重新从NameServer拉取最新的路由信息了，此时就会知道有一个Broker已经宕机了。
 ![img.png](cimg.png)
+  
+### RocketMQ Broker原理分析
+- Master Broker是如何将消息同步给Slave Broker的？
+    Master Broker主动推送给Slave Broker？还是Slave Broker发送请求到Master Broker去拉取？
+    RocketMQ的Master-Slave模式采取的是Slave Broker不停的发送请求到Master Broker去拉取消息
+    RocketMQ自身的Master-Slave模式采取的是Pull模式拉取消息
+
+- RocketMQ 实现读写分离了吗？
+    Master Broker主要是接收系统的消息写入，然后会同步给Slave Broker
+    作为消费者的系统在获取消息的时候，是从Master Broker获取的？还是从Slave Broker获取的？
+    有可能从Master Broker获取消息，也有可能从Slave Broker获取消息
+    Master Broker在返回消息给消费者系统的时候，会根据当时Master Broker的负载情况和Slave Broker的同步情况，向消费者系 统建议下一次拉取消息的时候是从Master Broker拉取还是从Slave Broker拉取。
+    举个例子，Master Broker负载很重, 所以此时Master Broker就会建议你从Slave Broker去拉取消息。
+    举另外一个例子，本身这个时候Master Broker上都已经写入了100万条数据了，结果Slave Broke同步的特别慢， 才同步了96万条数据，落后了整整4万条消息的同步，这个时候你作为消费者系统可能都获取到96万条数据了，那么下次还是只能从Master Broker去拉取消息。 
+- 如果Slave Broke挂掉了有什么影响？
+    有一点影响，但是影响不太大
+    消息写入全部是发送到Master Broker的，消息获取也可以走Master Broker，只不过有一些消息获取可能是从Slave Broker 去走的。所以如果Slave Broker挂了，那么此时无论消息写入还是消息拉取，还是可以继续从Master Broke去走，对整体运行不影响。
+    只不过少了Slave Broker，会导致所有读写压力都集中在Master Broker上。
