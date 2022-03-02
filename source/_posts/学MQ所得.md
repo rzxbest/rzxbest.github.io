@@ -137,3 +137,25 @@ Kafka是非常适合这种场景的。
   RocketMQ 4.5之后，RocketMQ支持了一种基于Raft协议实现的一个机制，叫做Dledger,,Dledger融入RocketMQ之后，可以让一个Master Broker对应多个Slave Broker，也就是说一份数据可以有多份副本，比如一个Master Broker对应两个Slave Broker。
   此时一旦Master Broker宕机了，就可以在多个副本，也就是多个Slave中，通过Dledger技术和Raft协议算法进行leader选举，直接将一个Slave Broker选举为新的Master Broker，然后这个新的Master Broker就可以对外提供服务了。整个过程也许只要10秒或者几十秒的时间就可以完成，这样的话，就可以实现Master Broker挂掉之后，自动从多个Slave Broker中选举出来一个新的Master Broker，继续对外服务，一切都是自动的。
 ![img.png](dimg.png)
+
+### 高可用部署方案
+- NameServer集群化部署，保证高可用，建议3台机器
+- 基于Dledger的Broker主从架构
+    - Dledger技术是要求至少得是一个Master带两个Slave，这样有三个Broke组成一个Group，也就是作为一个分组来运行。一旦 Master宕机，他就可以从剩余的两个Slave中选举出来一个新的Master对外提供服务
+- Broker是如何跟NameServer进行通信的?
+    - Broker会跟每个NameServer都建立一个TCP长连接，然后定时通过TCP长连接发送心跳请求过去，30s心跳一次，120秒检查一次是否一直没有心跳包
+- 使用MQ的系统都要多机器集群部署
+    - 生产者 消费者
+- MQ的核心数据模型:Topic到底是什么?
+    - Topic不能直译，表达的意思就是一个数据集合的意思，不同类型的数据你得放不同的Topic
+- Topic作为一个数据集合是怎么在Broker集群里存储的?
+    - 分布式存储 多个master
+    - 创建Topic的时候指定数据分散存储在多台Broker机器
+     ![img.png](fimg.png)
+- 生产者系统是如何将消息发送给Broker的?
+    - 在发送消息之前，得先有一个Topic，然后在发送消息的时候你得指定你要发送到哪个Topic里面去。
+    - 生产者跟nameserver建立长连接，拉取路由信息找到要投递消息的Topic分布在哪几台Broker上，根据负载均衡算法，从里面选择一台Broke机器出来
+    - 选择一台Broker，跟这个Broker建立一个TCP长连接，通过长连接向Broker发送消息
+- 消费者是如何从Broker上拉取消息的?
+    - 消费者跟nameserver建立长连接，拉取路由信息,接着找到自己要获取消息的 Topic在哪几台Broker上，就可以跟Broker建立长连接，从里面拉取消息
+
