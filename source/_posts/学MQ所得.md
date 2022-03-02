@@ -1,8 +1,7 @@
-
 ---
 title: 学MQ所得
-tags: [MQ]
-categories: [MQ]
+tags: [消息队列]
+categories: [消息队列]
 top: 30
 date: 2022-02-28 22:22:22
 ---
