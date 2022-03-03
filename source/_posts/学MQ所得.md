@@ -257,6 +257,14 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
     - cdn + nginx + redis  提前将商品数据放入redis, 使用nginx + lua 本地缓存和redis缓存加载商品页面
 高并发写 
     - 独立于订单系统，新建秒杀订单系统，避免秒杀时影响普通订单的下订单
+    - 客户端页面需要新增答题功能，防止作弊
     - nginx + lua 判断库存为0拦截下单接口，避免更多的请求直接打到下单接口
     - 调用下单接口，商品库存存redis,扣减库存
     - 下单接口 采用将数据写入mq，从而避免瞬间高并发数据库，使数据库宕机,订单系统拉取mq数据进行下单
+
+### Topic、MessageQueue和Broker之间的关系是什么?
+- 在创建Topic的时候需要指定一个很关键的参数，就是MessageQueue,指定你的这个Topic对应了多少个队列，也就是多少个MessageQueue
+- 每个MessageQueue中会平均分配Topic的数据,每个Broker机器上都存储一些MessageQueue，MessageQueue是RocketMQ中非常关键的一个数据分片机制，通过这个方法，就可以实现Topic数据的分布式存储!
+- 生产者会跟NameServer进行通信获取Topic的路由数据，生产者从NameServer中就知道一个Topic有几个MessageQueue，哪些MessageQueue在哪台Broker机器上，基于写入MessageQueue的策略，从而使消息分散在多个broker上
+- Master Broker挂了，此时正在等待的其他Slave Broker自动热切换为Master Broker，那么这个时候对这一组Broker就没有Master Broker可以写入了
+按照之前的策略来均匀把数据写入各个Broker上的MessageQueue，那么会导致你在一段时间内，每次访问到这个挂掉的 Master Broker都会访问失败，在Producer中开启一个开关，sendLatencyFaultEnable 一个自动容错机制，某次访问一个Broker发现网络延迟有500ms，无法访问，自动回避访问这个Broker一段时间
