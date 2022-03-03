@@ -197,18 +197,18 @@ ulimit
 因此通常建议用如下命令修改这个值:echo 'ulimit -n 1000000' >> /etc/profile。
 
 ### 中间件系统，对jvm参数调整
--server:服务器模式启动
--Xms8g -Xmx8g -Xmn4g:默认的堆大小是8g内存，新生代是4g内存
--XX:+UseG1GC -XX:G1HeapRegionSize=16m:用了G1垃圾回收器来做分代回收，对新生代和老年代都是用G1来回收，G1的region大小设置为了16m，这个因为机器内存比较多，所以region大小可以调大一些给到16m，不然用2m的region，会导致致region数量过多的
--XX:G1ReservePercent=25:G1管理的老年代里预留25%的空闲内存，保证新生代对象晋升到老年代的时候有足够空间，避免老年代内存都满了，新生代有对象要进入老年代没有充足内存了，默认值是10%，偏少，调大
--XX:InitiatingHeapOccupancyPercent=30:当堆内存的使用率达到30%之后就会自动启动G1的并发垃圾回收，开始尝试回收一些垃圾对象
+- -server:服务器模式启动
+- -Xms8g -Xmx8g -Xmn4g:默认的堆大小是8g内存，新生代是4g内存
+- -XX:+UseG1GC -XX:G1HeapRegionSize=16m:用了G1垃圾回收器来做分代回收，对新生代和老年代都是用G1来回收，G1的region大小设置为了16m，这个因-为机器内存比较多，所以region大小可以调大一些给到16m，不然用2m的region，会导致致region数量过多的
+- -XX:G1ReservePercent=25:G1管理的老年代里预留25%的空闲内存，保证新生代对象晋升到老年代的时候有足够空间，避免老年代内存都满了，新生代有对象要进入老年代没有充足内存了，默认值是10%，偏少，调大
+- -XX:InitiatingHeapOccupancyPercent=30:当堆内存的使用率达到30%之后就会自动启动G1的并发垃圾回收，开始尝试回收一些垃圾对象
 默认值是45%，调低，提高了GC的频率，避免了垃圾对象过多，一次垃圾回收耗时过长的问题
--XX:SoftRefLRUPolicyMSPerMB=0:建议这个参数不要设置为0，避免频繁回收一些软引用的Class对象，调整为比如1000
--verbose:gc -Xloggc:/dev/shm/mq_gc_%p.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps - XX:+PrintGCApplicationStoppedTime -XX:+PrintAdaptiveSizePolicy -XX:+UseGCLogFileRotation - XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=30m:控制GC日志打印输出的，gc日志文件的地址，打印哪些详细信息，每个gc日志文件的大小是30m，最多保留5个gc日志文件。
--XX:-OmitStackTraceInFastThrow:有时候JVM会抛弃一些异常堆栈信息，这个参数设置之后，禁用这个特性，要把完整的异常堆栈信息打印出来
--XX:+AlwaysPreTouch:刚开始指定JVM用多少内存，不会真正分配给他，会在实际需要使用的时候再分配给他，使用这个参数之后，就是强制让JVM启动的时候直接分配我们指定的内存，不要等到使用内存的时候再分配
--XX:MaxDirectMemorySize=15g:RocketMQ里大量用了NIO中的direct buffer，限定了direct buffer最多申请多少， 如果你机器内存比较大，可以适当调大这个值
--XX:-UseLargePages -XX:-UseBiasedLocking:这两个参数的意思是禁用大内存页和偏向锁
+- -XX:SoftRefLRUPolicyMSPerMB=0:建议这个参数不要设置为0，避免频繁回收一些软引用的Class对象，调整为比如1000
+- -verbose:gc -Xloggc:/dev/shm/mq_gc_%p.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps - XX:+PrintGCApplicationStoppedTime -XX:+PrintAdaptiveSizePolicy -XX:+UseGCLogFileRotation - XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=30m:控制GC日志打印输出的，gc日志文件的地址，打印哪些详细信息，每个gc日志文件的大小是30m，最多保留5个gc日志文件。
+- -XX:-OmitStackTraceInFastThrow:有时候JVM会抛弃一些异常堆栈信息，这个参数设置之后，禁用这个特性，要把完整的异常堆栈信息打印出来
+- -XX:+AlwaysPreTouch:刚开始指定JVM用多少内存，不会真正分配给他，会在实际需要使用的时候再分配给他，使用这个参数之后，就是强制让JVM启动的时候直接分配我们指定的内存，不要等到使用内存的时候再分配
+- -XX:MaxDirectMemorySize=15g:RocketMQ里大量用了NIO中的direct buffer，限定了direct buffer最多申请多少， 如果你机器内存比较大，可以适当调大这个值
+- -XX:-UseLargePages -XX:-UseBiasedLocking:这两个参数的意思是禁用大内存页和偏向锁
 RocketMQ默认的JVM参数是采用了G1垃圾回收器，默认堆内存大小是8G 可以根据机器内存来调整，增大一些也是没有问题的，然后就是一些G1的垃圾回收的行为参数做了调整，
 ### 对RocketMQ核心参数进行调整
 sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线程数量，默认是16
