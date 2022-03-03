@@ -268,3 +268,18 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
 - 生产者会跟NameServer进行通信获取Topic的路由数据，生产者从NameServer中就知道一个Topic有几个MessageQueue，哪些MessageQueue在哪台Broker机器上，基于写入MessageQueue的策略，从而使消息分散在多个broker上
 - Master Broker挂了，此时正在等待的其他Slave Broker自动热切换为Master Broker，那么这个时候对这一组Broker就没有Master Broker可以写入了
 按照之前的策略来均匀把数据写入各个Broker上的MessageQueue，那么会导致你在一段时间内，每次访问到这个挂掉的 Master Broker都会访问失败，在Producer中开启一个开关，sendLatencyFaultEnable 一个自动容错机制，某次访问一个Broker发现网络延迟有500ms，无法访问，自动回避访问这个Broker一段时间
+
+### broker如何存数据？
+- commitlog 顺序写文件
+    当生产者的消息发送到一个Broker上的时候，broker接收到了一条消息，将这个消息直接写入磁盘上的一个日志文件，叫做CommitLog，直接顺序写入这个文件，CommitLog是很多磁盘文件，每个文件限定最多1GB，Broker收到消息之后就直接追加写入这个文件的末尾，如果一个CommitLog写满了1GB，就会创建一个新的CommitLog文件。
+- MessageQueue在数据存储中是体现在哪里呢?
+    - 在Broker中，对Topic下的每个MessageQueue都会有一系列的ConsumeQueue文件。
+    - 在Broker的磁盘上，这种格式的一系列文件: $HOME/store/consumequeue/{topic}/{queueId}/{fileName}
+        {topic}指代的就是某个Topic，{queueId}指代的就是某个MessageQueue，有很多的ConsumeQueue文件，ConsumeQueue文件里存储的是一条消息对应在CommitLog文件中的offset偏移量，还包含了消息的长度，以及tag hashcode，一条数据是20个字节
+    ![img.png](abc.png)
+- 如何让消息写入CommitLog文件近乎内存写性能的?
+    - Broker是基于OS操作系统的PageCache和顺序写两个机制
+    - 数据写入CommitLog文件的时候，不是直接写入底层的物理磁盘文件，先写入OS的PageCache内存缓存中，然后由OS的后台线程选一个时间，异步化的将OS PageCache内存缓冲中的数据刷入底层的磁盘文件。
+    - 磁盘文件顺序写+OS PageCache写入+OS异步刷盘的策略，基本上可以让消息写入CommitLog的性能 跟你直接写入内存里是差不多的
+    - 异步刷盘模式，消息写入吞吐量非常高，可能会有数据丢失的风险 （Broker将消息写入OS PageCache中，就直接返回ACK，尚未刷入磁盘，宕机丢数据）
+    - 同步刷盘模式 必须强制把消息刷入底层的物理磁盘文件中，然后才会返回ack给producer
