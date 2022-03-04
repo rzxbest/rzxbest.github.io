@@ -283,3 +283,20 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
     - 磁盘文件顺序写+OS PageCache写入+OS异步刷盘的策略，基本上可以让消息写入CommitLog的性能 跟你直接写入内存里是差不多的
     - 异步刷盘模式，消息写入吞吐量非常高，可能会有数据丢失的风险 （Broker将消息写入OS PageCache中，就直接返回ACK，尚未刷入磁盘，宕机丢数据）
     - 同步刷盘模式 必须强制把消息刷入底层的物理磁盘文件中，然后才会返回ack给producer
+
+### 基于Dledger的高可用broker如何运行？
+- 基于DLedger技术管理CommitLog 
+    - 用DLedger先替换掉原来Broker 自己管理的CommitLog，由DLedger来管理CommitLog
+    - Broker基于DLedger管理的CommitLog 去构建出来机器上的各个ConsumeQueue磁盘文件
+
+- Broker集群启动时，基于DLedger技术和Raft协议完成Leader选举
+    - 每个节点都投票给自己
+    - 选举失败后，每个节点随机休眠，先醒的机器投票给自己并发送投票信息给其他节点，其他节点醒了收到先醒机器的投票，会投票给先醒的节点
+    - 选票 大于等于（机器数/2+1）,选为master节点
+
+- Leader Broker写入之后，基于DLedger技术和Raft协议同步给Follower Broker 
+    - 数据同步会分为两个阶段，一个是uncommitted阶段，一个是commited阶段
+    - 首先Leader Broker上的DLedger收到一条数据之后，会标记为uncommitted状态，通过自己的DLedgerServer组件把这个uncommitted数据发送给Follower Broker的DLedgerServer。Follower Broker的DLedgerServer收到uncommitted消息之后，必须返回一个ack给Leader Broker的DLedgerServer，然后如果Leader Broker收到超过半数的Follower Broker返回ack之后，就会将消息标记为committed状态。Leader Broker上的DLedgerServer就会发送commited消息给Follower Broker机器的DLedgerServer，让他们也把消息标记为 comitted状态。
+    
+- 如果Leader Broker崩溃，则基于DLedger和Raft协议重新选举Leader
+    基于DLedger还是采用Raft协议的算法，去选举出来一个新的Leader Broker继续对外提供服务，而且会对没有完成的数据同步进行一些恢复性的操作，保证数据不会丢失。
