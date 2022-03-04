@@ -336,3 +336,31 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
 
 - Master Broker什么时候会让你从Slave Broker拉取数据?
     对比你当前没有拉取消息的数量和大小，以及最多可以存放在os cache内存里的消息的大小，如果没拉取的消息超过了最大能使用的内存的量，那么说明你后续会频繁从磁盘加载数据，此时就让你从slave broker去加载数据了
+
+### 基于mmap技术实现磁盘高性能读写
+- 传统文件读写：
+    普通的IO操作的一个弊端，必然涉及到两次数据拷贝操作，对磁盘读写性能是有影响的。 
+        - 从磁盘上把数据读取到内核IO缓冲区里，再从内核IO缓存区里读取到用户进程私有空间，才能拿到这个文件里的数据
+        - 必须先把数据写入到用户进程私有空间里去，再进入内核IO缓冲区，最后进入磁盘文件里去。
+- mmap技术
+    建立用户进程私有空间的虚拟内存和文件物理磁盘地址映射，此时并没有任何的数据拷贝操作，JDK NIO包下的MappedByteBuffer的map()函数 将文件映射到内存。mmap技术在进行文件映射的时候，一般有大小限制，在1.5GB~2GB之间
+- mmap + page cache
+    接下来MappedByteBuffer执行写入操作，写入的时候直接进入PageCache中，过一段时间之后，由os的线程异步刷入磁盘中
+    判断要读取的数据是否在PageCache里?如果在的话，直接从PageCache里读取。如果不在PageCache，会从磁盘文件里加载数据到PageCache中，PageCache技术在加载数据的时候，会将你加载的数据块的临近的其他数据块一起加载到PageCache中。
+
+### 丢数据场景
+- 生产者往broker发送数据，网络异常没有发送成功
+- broker正常接受到数据，写入page cache ，异步刷盘策略，未刷盘机器宕机
+- leader故障，slave切换leader过程中，这个过程出现异常
+- 磁盘坏了
+- 消费者读取消息策略自动提交offset，数据未处理完宕机
+
+### 解决丢数据
+- RocketMQ的事务消息机制确定生产者发送的消息到达broker
+    - 首先要让生产者去发送一条half消息到MQ去，这个half消息本质就是一个业务执行成功的消息，可以理解这个消息的状态是half状态，这时消费者系统是看不见这个half消息的，生产者等待接收half消息写入成功的响应通知
+    - half消息给MQ失败了，报错了，可能mq挂了，可能网络故障了，这时执行回滚操作
+    - half消息成功，生产者系统完成自己的任务
+    - 生产者系统做自己的任务时发生异常，需要发rollback给mq,让mq删除half消息
+    - 生产者系统完成自己的任务，需要commit half消息，发一个commit请求给mq
+    - rocketmq 有一个补偿，扫描自己的half消息，如果一直没有commit或rollback 会回调生产者系统的接口，询问这个消息是commit还是rollback
+     ![img.png](d.png)
