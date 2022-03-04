@@ -364,10 +364,21 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
     - 生产者系统完成自己的任务，需要commit half消息，发一个commit请求给mq
     - rocketmq 有一个补偿，扫描自己的half消息，如果一直没有commit或rollback 会回调生产者系统的接口，询问这个消息是commit还是rollback
      ![img.png](d.png)
-    
+- 异步刷盘改为同步刷盘
+    调整broker的配置文件，将其中的flushDiskType配置设置为:SYNC_FLUSH，默认他的值是ASYNC_FLUSH，即默认是异步刷盘的。
+- 消费端 改为不自动提交offset
+    RocketMQ的消费者中会注册一个监听器，MessageListenerConcurrently，当你的消费者获取到一批消息之后，回调你的这个监听器函数，让消费者系统处理这一批消息。
+    默认的Consumer的消费模式，处理完一批消息了，才会返回 ConsumeConcurrentlyStatus.CONSUME_SUCCESS状态标识消息都处理结束，去提交offset到broker去
+    ![img.png](f.png)
+
 ### 事务机制底层实现原理
 - half消息写入到rocketmq内部的“RMQ_SYS_TRANS_HALF_TOPIC”这个Topic对应的一个ConsumeQueue里，此时就会认为half消息写入成功，响应给生产者系统
 - 定时任务会去扫描RMQ_SYS_TRANS_HALF_TOPIC中的half消息，超过一定时间还是half消息，回调生产者的接口，让系统判断这个half消息是要rollback还是commit
 - 执行rollback操作，RocketMQ就会在OP_TOPIC里写入一条记录，标记half消息已经是rollback状态
 - 执行commit操作之后，RocketMQ就会在OP_TOPIC里写入一条记录，标记half消息已经是commit状态，接着需要把放在RMQ_SYS_TRANS_HALF_TOPIC中的half消息给写入到业务topic的ConsumeQueue里去，然后消费者系统可以看见
 - 一直没有执行commit/rollback，RocketMQ会回调订单系统的接口去判断half消息的状态，最多就是回调15次，如果15次之后没法告知他half消息的状态，自动把消息标记为rollback。
+
+### 同步发送+反复重试发送的缺陷
+- 反复重试耗时，影响接口返回
+- 反复重试失败，回滚业务代码不方便，本地事务容易会滚，但是操作中间件的不容易会滚
+- 反复重试失败，未会滚业务代码，导致系统之间数据不一致，未收到消息的系统与发送消息的系统数据不一致
