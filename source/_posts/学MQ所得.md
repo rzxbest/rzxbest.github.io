@@ -364,3 +364,10 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
     - 生产者系统完成自己的任务，需要commit half消息，发一个commit请求给mq
     - rocketmq 有一个补偿，扫描自己的half消息，如果一直没有commit或rollback 会回调生产者系统的接口，询问这个消息是commit还是rollback
      ![img.png](d.png)
+    
+### 事务机制底层实现原理
+- half消息写入到rocketmq内部的“RMQ_SYS_TRANS_HALF_TOPIC”这个Topic对应的一个ConsumeQueue里，此时就会认为half消息写入成功，响应给生产者系统
+- 定时任务会去扫描RMQ_SYS_TRANS_HALF_TOPIC中的half消息，超过一定时间还是half消息，回调生产者的接口，让系统判断这个half消息是要rollback还是commit
+- 执行rollback操作，RocketMQ就会在OP_TOPIC里写入一条记录，标记half消息已经是rollback状态
+- 执行commit操作之后，RocketMQ就会在OP_TOPIC里写入一条记录，标记half消息已经是commit状态，接着需要把放在RMQ_SYS_TRANS_HALF_TOPIC中的half消息给写入到业务topic的ConsumeQueue里去，然后消费者系统可以看见
+- 一直没有执行commit/rollback，RocketMQ会回调订单系统的接口去判断half消息的状态，最多就是回调15次，如果15次之后没法告知他half消息的状态，自动把消息标记为rollback。
