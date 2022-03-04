@@ -254,13 +254,13 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
 
 ### 秒杀场景下？
 高并发读,抢购商品界面 
-    - cdn + nginx + redis  提前将商品数据放入redis, 使用nginx + lua 本地缓存和redis缓存加载商品页面
+- cdn + nginx + redis  提前将商品数据放入redis, 使用nginx + lua 本地缓存和redis缓存加载商品页面
 高并发写 
-    - 独立于订单系统，新建秒杀订单系统，避免秒杀时影响普通订单的下订单
-    - 客户端页面需要新增答题功能，防止作弊
-    - nginx + lua 判断库存为0拦截下单接口，避免更多的请求直接打到下单接口
-    - 调用下单接口，商品库存存redis,扣减库存
-    - 下单接口 采用将数据写入mq，从而避免瞬间高并发数据库，使数据库宕机,订单系统拉取mq数据进行下单
+- 独立于订单系统，新建秒杀订单系统，避免秒杀时影响普通订单的下订单
+- 客户端页面需要新增答题功能，防止作弊
+- nginx + lua 判断库存为0拦截下单接口，避免更多的请求直接打到下单接口
+- 调用下单接口，商品库存存redis,扣减库存
+- 下单接口 采用将数据写入mq，从而避免瞬间高并发数据库，使数据库宕机,订单系统拉取mq数据进行下单
 
 ### Topic、MessageQueue和Broker之间的关系是什么?
 - 在创建Topic的时候需要指定一个很关键的参数，就是MessageQueue,指定你的这个Topic对应了多少个队列，也就是多少个MessageQueue
@@ -297,6 +297,24 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
 - Leader Broker写入之后，基于DLedger技术和Raft协议同步给Follower Broker 
     - 数据同步会分为两个阶段，一个是uncommitted阶段，一个是commited阶段
     - 首先Leader Broker上的DLedger收到一条数据之后，会标记为uncommitted状态，通过自己的DLedgerServer组件把这个uncommitted数据发送给Follower Broker的DLedgerServer。Follower Broker的DLedgerServer收到uncommitted消息之后，必须返回一个ack给Leader Broker的DLedgerServer，然后如果Leader Broker收到超过半数的Follower Broker返回ack之后，就会将消息标记为committed状态。Leader Broker上的DLedgerServer就会发送commited消息给Follower Broker机器的DLedgerServer，让他们也把消息标记为 comitted状态。
-    
+
 - 如果Leader Broker崩溃，则基于DLedger和Raft协议重新选举Leader
     基于DLedger还是采用Raft协议的算法，去选举出来一个新的Leader Broker继续对外提供服务，而且会对没有完成的数据同步进行一些恢复性的操作，保证数据不会丢失。
+
+### 消费者是如何获取消息并处理？
+- 消费者组概念
+    一组消费者的简称，集群模式下，一个消费组获取到一条消息，只会交给组内的一台机器去处理，广播模式下，消费组获取到的一条消息，组内每台机器都可以获取到这条消息
+- 重温MessageQueue、CommitLog、ConsumeQueue之间的关系
+    MessageQueue会分散在多个Broker上，在每个Broker机器上，一 个MessageQueue就对应了一个ConsumeQueue，在物理磁盘上其实是对应了多个ConsumeQueue文件的，
+- MessageQueue与消费者的关系
+    均匀的将MessageQueue分配给消费组的多台机器来消费
+
+- Push模式 vs Pull模式
+    - 两个消费模式本质都是消费者机器主动发送请求到Broker机器去拉取一批消息下来。
+    - Push是Broker会尽可能实时的把新消息交给消费者机器来进行处理，消息时效性会更好。
+        一般我们使用RocketMQ的时候，消费模式通常都是基于他的Push模式来做的，因为Pull模式的代码写起来更加的复杂和繁琐
+    - Push当消费者发送请求到Broker去拉取消息，有新的消息可以消费那么就会立马返回一批消息到消费机器去处理，处理完之后会接着立刻发送请求到Broker机器去拉取下一批消息。
+    - Push模式下有一个请求挂起和长轮询的机制
+        当消费者的请求发送到Broker，没有新的消息给你处理的时候，就会让请求线程挂起，默认是挂起15秒，后台线程每隔一会儿检查一下是否有的新的消息，在这个挂起过程中，有新的消息到达了会主动唤醒挂起的线程，然后把消息返回给消费者。
+
+
