@@ -325,3 +325,14 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
 - 如果消费组中出现机器宕机或者扩容加机器，会怎么处理?
     如果消费组中出现机器宕机或者扩容加机器的情况，他会怎么处理?这个时候其实会进入一个rabalance的环节，也就是说重新给各个消费机器分配他们要处理的MessageQueue。
 
+### 消费者根据什么策略从master还是slave拉取消息？
+- ConsumeQueue文件也是基于os cache的
+    - os读取一个磁盘文件时，自动把磁盘文件里的数据缓存到os cache中
+    - ConsumeQueue文件主要是存放消息的offset，文件小，30万条消息的offset就只有5.72MB。实际上ConsumeQueue文件是不占用多少磁盘空间的，整体数据量很小，几乎可以完全被os缓存在内存cache里。
+- 根据你读取到的offset去CommitLog里读取消息的完整数据
+    os cache对于CommitLog而言，主要是提升文件写入性能，当你不停的写入的时候，很多最新写入的数据都会先停留在os cache里，比如这可能有10GB~20GB的数据。os会自动把cache里的比较旧的一些数据刷入磁盘里，腾出来空间给更新写入的数据放在os cache里
+    - 如果你读取的是那种刚刚写入CommitLog的数据，大概率停留在os cache中，可以直接从os cache里读取CommitLog中的数据，这个就是内存读取，性能是很高的。
+    - 读取的是比较早之前写入CommitLog的数据，数据被刷入磁盘，不存在os cache里了，只能从磁盘上的文件里读取，性能是比较差
+
+- Master Broker什么时候会让你从Slave Broker拉取数据?
+    对比你当前没有拉取消息的数量和大小，以及最多可以存放在os cache内存里的消息的大小，如果没拉取的消息超过了最大能使用的内存的量，那么说明你后续会频繁从磁盘加载数据，此时就让你从slave broker去加载数据了
