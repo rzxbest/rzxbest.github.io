@@ -405,3 +405,15 @@ sendMessageThreadPoolNums=16 RocketMQ内部用来发送消息的线程池的线�
     - 重试了16次还一直没处理成功，就不要继续重试这批消息，同时消息会自动进入死信队列。
     - 死信队列的名字是“%DLQ%VoucherConsumerGroup”
     - 可以开一个后台线程，订阅“%DLQ%VoucherConsumerGroup”死信队列， 对死信队列中的消息，一直不停的处理
+
+### 消息过滤
+发送消息时，给消息设置tag或者属性
+```
+Message msg = new Message("topic","tag",data.getBytes()); 指定tag
+msg.putUserProperty("props",10);添加属性
+```
+
+消费数据的时候根据tag和属性进行过滤
+```
+
+```
