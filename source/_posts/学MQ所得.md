@@ -415,5 +415,89 @@ msg.putUserProperty("props",10);添加属性
 
 消费数据的时候根据tag和属性进行过滤
 ```
+consumer.subscribe("topic","tag1||tag2");
+或
+consumer.subscribe("topic",MessageSelector.bySql("props > 10s"))
+```
+ RocketMQ还是支持比较丰富的数据过滤语法的，如下所示:
+(1)数值比较，比如: >，>=，<，<=，BETWEEN，=; 
+(2)字符比较，比如: =，<>，IN;
+(3)IS NULL 或者 IS NOT NULL;
+(4)逻辑符号 AND，OR，NOT; 
+(5)数值，比如:123，3.1415; 
+(6)字符，比如:'abc'，必须用单引号包裹起来; 
+(7)NULL，特殊的常量
+(8)布尔值，TRUE 或 FALSE
+
+### 延迟消息
+```
+Message msg = new Message("topic","tag",data.getBytes()); 指定tag
+msg.setDelayTimeLevel(3);添加延迟级别
+```
+发送延迟消息的核心，就是设置消息的delayTimeLevel延迟级别
+RocketMQ默认支持延迟级别:1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h
+代码中设置延迟级别为3，意思就是延迟10s，发送出去的消息，会过10s被消费者获取到。
+
+### 基于消息key来定位消息是否丢失
+
+可以基于消息key来实现，通过如下方式设置一个消息的key为订单id:message.setKeys(orderId)
+接着这个消息到broker上，会基于key构建hash索引，这个hash索引就存放在IndexFile索引文件里。
+通过MQ提供的命令去根据key查询这个消息:mqadmin queryMsgByKey -n 127.0.0.1:9876 - t SCANRECORD -k orderId
+
+### 权限控制
+Broker的配置文件里需要设置aclEnable=true这个配置，开启权限控制
+Broker部署机器的${ROCKETMQ_HOME}/store/config目录下，可以放一个plain_acl.yml的配置文件
 
 ```
+# 这个参数就是全局性的白名单
+# 这里定义的ip地址，都是可以访问Topic的
+globalWhiteRemoteAddresses:
+- 13.21.33.*
+- 192.168.0.*
+# 这个accounts就是说，你在这里可以定义很多账号
+# 每个账号都可以在这里配置对哪些Topic具有一些操作权限
+accounts:
+# 这个accessKey其实就是用户名的意思，比如我们这里叫做“订单技术团队” - accessKey: OrderTeam
+# 这个secretKey其实就是这个用户名的密码
+secretKey: 123456
+# 下面这个是当前这个用户名下哪些机器要加入白名单的
+whiteRemoteAddress:
+# admin指的是这个账号是不是管理员账号
+admin: false
+# 这个指的是默认情况下这个账号的Topic权限和ConsumerGroup权限
+defaultGroupPerm: SUB
+# 这个就是这个账号具体的堆一些账号的权限
+# 下面就是说当前这个账号对两个Topic，都具备PUB|SUB权限，就是发布和订阅的权限 # PUB就是发布消息的权限，SUB就是订阅消息的权限
+# DENY就是拒绝你这个账号访问这个Topic
+topicPerms:
+- CreateOrderInformTopic=PUB|SUB - PaySuccessInformTopic=PUB|SUB
+# 下面就是对ConsumerGroup的权限，也是同理的 groupPerms:
+- groupA=DENY
+- groupB=PUB|SUB
+- groupC=SUB
+# 下面就是另外一个账号了，比如是商品技术团队的账号 - accessKey: ProductTeam
+secretKey: 12345678 whiteRemoteAddress: 192.168.1.*
+# 如果admin设置为true，就是具备一切权限 admin: true
+```
+
+### 消息消费链路
+- broker的配置文件里开启traceTopicEnable=true开启消息轨迹追踪。
+- 当启动这个Broker的时候会自动创建出来一个内部的Topic，RMQ_SYS_TRACE_TOPIC，用来存储所有的消息轨迹追踪的数据的。
+
+```
+DefaultMQProducer producer = new DefaultMQProducer("topic",true); //第二个参数enableMsgTrace= true表示对消息开启轨迹追踪
+```
+- RocketMQ控制台里，在导航栏里就有一个消息轨迹，在里面可以创建查询任务， 根据messageId、message key或者Topic来查询，Producer、Broker、Consumer上报的一些轨迹数据
+
+- Broker记录消息的轨迹数据，包括如下:消息存储的Topic、消息存储的位置、消息的key、消息的 tags。
+- Consumer端上报信息， 包括：Consumer的信息、投递消息的时间、这是第几轮投递消息、消息消费是否成功、消费这条消息的耗时
+### 消息积压了怎么办？
+4台机器20个message queue 消息积压了
+
+- 临时申请16台机器多部署16个消费者系统的实例，然后20个消费者系统同时消费，每个人消费一个MessageQueue的 消息
+- 消费者系统底层依赖的数据库必须要能抗住临时增加了5倍的读写压力
+
+### mq故障了怎么办？ 异常重试、失败存储、恢复发送
+- 针对这种场景，生产者系统中设计高可用的降级方案，发送消息到MQ代码里去try catch捕获异常，有异常进行重试。
+- 连续重试了超过n次还是失败，说明MQ集群可能彻底崩溃，这时消息写入到本地存储（数据库、本地磁盘文件、NoSQL存储）
+- 不停的尝试发送消息到MQ去，一旦发现MQ集群恢复，有一个后台线程可以把之前持久化存储的消息都查询出来，依次按照顺序发送到MQ集群里
