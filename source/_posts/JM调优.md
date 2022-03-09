@@ -160,3 +160,26 @@ CMS在垃圾回收的时候，尤其是并发清理期间，系统程序是可�
 - 使用“-XX:+UseG1GC”来指定使用G1垃圾回收器，会自动用堆大小除以2048得到每个region的大小，可以使用-XX:G1HeapRegionSize指定region的大小
 G1中新生代（Eden、Survivor）、老年代的逻辑概念，-XX:G1NewSizePercent来设置新生代初始占比的，随着对象的不停创建，属于新生代的Region会不断增加，Eden和Survivor对应的Region也会不断增加。一旦新生代达到了设定的占据堆内存的最大大小60%，会触发新生代的GC，G1就会用复制算法来进行垃圾回收，进入一个“Stop the World”状态，然后把Eden对应的Region中的存活对象放入S1对应的Region中，接着回收掉Eden对应的Region中的垃圾对象   
 - G1是可以设定目标GC停顿时间的，G1执行GC的时候最多可以让系统停顿多长时间，可以通过“-XX:MaxGCPauseMills”参数来设定，默认值是200ms。
+- 年轻代何时进入老年代？跟之前几乎是一样的
+    - 对象在新生代gc多次仍然存活 -XX:MaxTenuringThreshold
+    - 年龄为1岁，2岁，3岁，n岁的对象的大小总和超过了Survivor的50%，n+1岁进入老年代
+    - 在G1中，大对象的判定规则：一个大对象超过了一个Region大小的50%，会被放入大对象专门的Region
+- G1有“-XX:InitiatingHeapOccupancyPercent”，默认值是45%：老年代占据了堆内存的45%的Region的时候，尝试触发一个新生代+老年代一起回收的混合回收阶段。
+- G1垃圾收集几个阶段（混合回收可以执行多次）
+    - 初始标记 stw 标记一下GC Roots直接能引用的对象 很快
+    - 并发标记，允许系统程序的运行，同时进行GC Roots追踪，从GC Roots开始追踪所有的存活，同时记录并发标记系统运行导致哪些对象的改变
+    - 最终标记阶段，stw 对并发标记阶段记录的对象进行标记，最终标记一下有哪些存活对象，有哪些是垃圾对象
+    - 混合回收，从新生代和老年代里都回收一些Region，先停止工作，执行一次混合回收回收掉一些Region，接着恢复系统运行，然后再次停止系统运行，再执行一次混合回收回收掉一些Region。-XX:G1MixedGCCountTarget  混合回收的过程中，最后一个阶段执行几次混合 回收，默认值是8次
+
+### G1调优
+- -Xms4096M -Xmx4096M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseG1GC
+- -XX:G1NewSizePercent参数是用来设置新生代初始占比的，不用设置，维持默认值为5%即可
+- -XX:G1MaxNewSizePercent参数是用来设置新生代最大占比的，也不用设置，维持默认值为60%即可
+- -XX:MaxGCPauseMills 默认值是200毫秒 垃圾回收时最大停顿时间 
+- G1里是很动态灵活的，根据你设定的gc停顿时间给你的新生代不停分配更多Region，到一定程度，就会触发新生代gc，保证新生代gc的时候导致的系统停顿时间在预设范围内。
+- 新生代的GC优化：合理设置“-XX:MaxGCPauseMills”参数，设置小了，Gc频繁，设置大了，GC停顿时间长
+- mixed gc优化：默认老年代占据了堆内存的45%的Region的时候，发生Gc,如果-XX:MaxGCPauseMills设置过大，就会导致新生代GC后更多的对象进入老年代，加速mixed gc 发生
+
+
+
+
