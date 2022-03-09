@@ -148,4 +148,12 @@ CMS垃圾回收器采取的是垃圾回收线程和系统工作线程尽量同�
 - 结合系统的运行模型，@Service、@Controller之类的注解那种需要长期存活的核心业务逻辑组件，降低“-XX:MaxTenuringThreshold”参数的值，避免对长期存活的对象在新生代Survivor区来回复制
 - 大对象直接进入老年代，-XX:PretenureSizeThreshold=1M，避免对象在新生代Survivor区来回复制
 一般启动参数：
--Xms3072M -Xmx3072M -Xmn2048M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M - XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=5 -XX:PretenureSizeThreshold=1M -XX:+UseParNewGC - XX:+UseConcMarkSweepGC
+-Xms3072M -Xmx3072M -Xmn2048M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M - XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=5 -XX:PretenureSizeThreshold=1M -XX:+UseParNewGC - XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFaction=92 -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0
+
+### Concurrent Mode Failure
+CMS在垃圾回收的时候，尤其是并发清理期间，系统程序是可以并发运行的，假设此时老年代空闲空间仅剩100MB，此时系统程序还在不停的创建对象，万一这个时候系统运行触发了某个条件，比如说有200MB对象要进入老年代，这个时候就会触发“Concurrent Mode Failure”问题，因为此时老年代没有足够内存来放这200MB对象，此时就会导致立马进入Stop the World，然后切换CMS为Serial Old收集器来单线程收集垃圾 
+
+### G1
+G1垃圾回收器把Java堆内存拆分为多个大小相等的Region，G1会有新生代和老年代的概念，但是只是逻辑上的概念
+G1垃圾回收器可以设置一个垃圾回收的预期停顿时间
+G1通过把内存拆分为大量小Region，以及追踪每个Region中可以回收的对象大小和预估时间，在垃圾回收的时候，尽量把垃圾回收对系统造成的影响控制在指定的时间范围内，同时在有限的时间内尽量回收尽可能多的垃圾对象
