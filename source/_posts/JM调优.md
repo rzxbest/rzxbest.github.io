@@ -110,3 +110,42 @@ Application ClassLoader，负责去加载“ClassPath”环境变量所指定的
 - Serial和Serial Old垃圾回收器:分别用来回收新生代和老年代的垃圾对象，工作原理就是单线程运行，STW，一般几乎不用。
 - ParNew和CMS垃圾回收器:ParNew现在一般用在新生代的，CMS是用在老年代的，都是多线程并发的机制，性能更好，一般是生产系统的标配组合。
 - G1垃圾回收器:统一收集新生代和老年代，采用了更加优秀的算法和设计机制
+
+### stw
+直接停止Java系统的所有工作线程，让代码不再运行，让垃圾回收线程可以专心致志的进行垃圾回收的工作
+    - 假设我们的Minor GC要运行100ms，那么可能就会导致系统直接停顿100ms不能处理任何请求
+    - Full GC是最慢的，有的时候弄不好一次回收要进行几秒钟，甚至几十秒，有的极端场景几分钟都是有可能的。一旦频繁的Full GC，系统每一段时间就卡死个30秒吗?
+    - 无论是新生代GC还是老年代GC，都尽量不要让频率过高，避免持续时间过长
+
+### ParNew垃圾收集器
+暂停系统程序的工作线程，禁止程序继续运行创建新的对象，用多个垃圾回收线程去进行垃圾回收，用复制算法回收
+使用ParNew垃圾回收器 JVM参数 -XX:+UseParNewGC
+ParNew垃圾回收器默认情况下的线程数量 垃圾回收线程的数量就是跟CPU的核数是一样。 JVM参数设置 - XX:ParallelGCThreads=n
+
+### 服务器模式与客户端模式
+- 启动系统的时候是可以区分服务器模式和客户端模式的，启动系统的时候加入“-server”就是服务器模式，如果加入“-cilent”就是客户端模式。
+- 系统部署在比如4核8G的Linux服务器上那么就应该用服务器模式，如果你的系统是运行在比如Windows上的客户端程序，那么就应该是客户端模式。
+- 服务器模式通常ParNew来进行垃圾回收，客户端模式使用采用Serial垃圾回收器，单CPU单线程垃圾回收
+
+### CMS
+CMS垃圾回收器采取的是垃圾回收线程和系统工作线程尽量同时执行的模式来处理的，使用标记-清理的算法
+初始标记 ：stw 很快，仅仅标记出GC Root根
+并发标记 ：对老年代所有对象进行GC Roots追踪，其实是最耗时的
+重新标记 ：stw 很快,对在第二阶段中被系统程序运行变动过的少数对象进行标记
+并发清理 ：很耗时
+
+缺点： 
+    - 会消耗CPU资源，在并发标记时，老年代存活对象多，追踪大量对象，耗时较高，并发清理，把垃圾对象从随机的内存位置清理掉，也比较耗时，CMS的垃圾回收线程是比较耗费CPU资源的。CMS默认启动的垃圾回收线程的数量是(CPU核数 + 3)/ 4。
+    - 会产生浮动垃圾，并发清理同时随着系统运行让一些对象进入老年代，这种垃圾需要等到下一次GC才能回收掉
+
+
+-XX:CMSInitiatingOccupancyFaction 用来设置老年代占用多少时触发CMS垃圾回收，JDK 1.6里面默认的值是 92%。
+-XX:+UseCMSCompactAtFullCollection 默认开启 Full GC之后再次进行stw，碎片整理
+-XX:CMSFullGCsBeforeCompaction 执行多少次Full GC之后执行一次内存碎片整理，默认是0，每次Full GC之后都会进行内存整理。
+
+### 优化方案
+- 评估Eden区进行Minor Gc 之后存活的对象大小，Suvivor区空间够不够，建议的是调整新生代和老年代的大小，让短期存活的对象在新生代就被垃圾回收
+- 结合系统的运行模型，@Service、@Controller之类的注解那种需要长期存活的核心业务逻辑组件，降低“-XX:MaxTenuringThreshold”参数的值，避免对长期存活的对象在新生代Survivor区来回复制
+- 大对象直接进入老年代，-XX:PretenureSizeThreshold=1M，避免对象在新生代Survivor区来回复制
+一般启动参数：
+-Xms3072M -Xmx3072M -Xmn2048M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M - XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=5 -XX:PretenureSizeThreshold=1M -XX:+UseParNewGC - XX:+UseConcMarkSweepGC
