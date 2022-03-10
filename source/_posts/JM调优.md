@@ -195,3 +195,63 @@ G1中新生代（Eden、Survivor）、老年代的逻辑概念，-XX:G1NewSizePe
     - 估计50次年轻代gc 会发生老年代Gc
 - 每秒十万并发，那么就要部署上百台机器来，扩大机器内存，使用G1收集器，采用10台机器
 
+## 实战
+### 打印gc日志
+- -XX:+PrintGCDetils:打印详细的gc日志 
+- -XX:+PrintGCTimeStamps:这个参数可以打印出来每次GC发生的时间 
+- -Xloggc:gc.log:这个参数可以设置将gc日志写入一个磁盘文件
+
+
+### Jvm 命令
+- jps 查看jvm进程ID
+- jstat -gc jvm进程ID 查看jvm进程内存使用情况
+    - S0C:From Survivor区的大小
+    - S1C:To Survivor区的大小
+    - S0U:From Survivor区当前使用的内存大小 
+    - S1U:To Survivor区当前使用的内存大小 
+    - EC:Eden区的大小
+    - EU:Eden区当前使用的内存大小
+    - OC:老年代的大小
+    - OU:老年代当前使用的内存大小 
+    - MC:方法区(永久代、元数据区)的大小 
+    - MU:方法区(永久代、元数据区)的当前使用的内存大小 
+    - YGC:Young GC次数 
+    - YGCT:Young GC的耗时 
+    - FGC:Full GC次数
+    - FGCT:Full GC的耗时
+    - GCT:所有GC的总耗时
+- jstat -gc jvm进程ID 1000 10  1秒输出一次 输出10次 用于观察环境上内存变化
+- jmap -heap jvm进程ID 查看堆内存信息
+- jmap -histo:live jvm进程ID 查看内存对象信息
+- jmap -dump:live,file=/filename.hprof jvm进程ID  dump出内存信息
+- jhat -port 7000 filename.hprof 将dump文件加载出来以网页方式呈现
+
+## 调优
+### 调优方案
+尽量让每次Young GC后的存活对象小于Survivor区域的50%，都留存在年轻代里。
+尽量别让对象进入老年代。
+尽量减少Full GC的频率，避免频繁Full GC对JVM性能的影响。
+### 社交app，QPS 十万
+- 老年代频繁Gc 压缩碎片，避免每次GC间隔越来越短 -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=5
+### 垂直电商app 每小时总会有卡顿
+- 垂直电商APP的各个系统通过jstat分析JVM GC之后发现，基本上高峰期的时候，Full GC每小时都会发生好几次
+- 通用JVM参数 -Xms4096M -Xmx4096M -Xmn3072M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseParNewGC - XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFaction=92 -XX:+UseCMSCompactAtFullCollection - XX:CMSFullGCsBeforeCompaction=0
+- 优化fullgc的效率
+    - -XX:+CMSParallelInitialMarkEnabled CMS垃圾回收器的“初始标记”阶段开启多线程并发执行
+    - -XX:+CMSScavengeBeforeRemark 会在CMS的重新标记阶段之前，尽量执行一次Young GC。
+
+### 频繁的fullgc 观察后发现元空间的满了
+- 代码里写了大量反射代码，JVM会动态的去生成一些类放入Metaspace区域里的，JVM自己创建的奇怪的类Class对象是SoftReference
+- 软引用，只有内存不够才会回收，怎么判断要不要回收？clock - timestamp <= freespace * SoftRefLRUPolicyMSPerMB，clock - timestamp代表了一个软引用对象他有多久没被访问过了，freespace代表JVM中的空闲内存空间，SoftRefLRUPolicyMSPerMB代表每一MB空闲内存空间可以允许SoftReference对象存活多久
+- SoftRefLRUPolicyMSPerMB 设置为0 导致
+- 在有大量反射代码的场景下 -XX:SoftRefLRUPolicyMSPerMB=0 可以设置个1000，2000，3000，或者5000毫秒 默认1000
+
+### 线上fullgc频繁
+- 机器配置:2核4G，JVM堆内存大小:2G，系统运行时间:6天，系统运行6天内发生的Full GC次数和耗时:250次，70多秒，系统运行6天内发生的Young GC次数和耗时:2.6万次，1400秒，每天会发生4000多次Young GC，每分钟会发生3次，每次Young GC在50毫秒左右
+- 未优化前 -Xms1536M -Xmx1536M -Xmn512M -Xss256K -XX:SurvivorRatio=5 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC - XX:CMSInitiatingOccupancyFraction=68 -XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly - XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC
+- 通过jstat的观察，每次Young GC过后升入老年代里的对象很少 ， 每次Young GC过后大概就存活几十MB而已，那么Survivor区域因为就70MB，所以经常会触发动态年龄判断规则，导致偶尔一次Young GC过后有几十MB对象进入老年代
+- 大对象 jstat工具观察系统，发现老年代里突然进入了几百MB的大对象,就是特殊场景全表查了数据库，量比较大
+- 优化方案
+    - 去除查大数据量的bug
+    - 年轻代变大，避免触发动态年龄判断，部分垃圾对象进入老年代
+    - -Xms1536M -Xmx1536M -Xmn1024M -Xss256K -XX:SurvivorRatio=5 -XX:PermSize=256M -XX:MaxPermSize=256M - XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFraction=92 - XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:+PrintGCDetails -XX:+PrintGCTimeStamps - XX:+PrintHeapAtGC
