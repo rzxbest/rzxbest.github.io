@@ -255,3 +255,6 @@ G1中新生代（Eden、Survivor）、老年代的逻辑概念，-XX:G1NewSizePe
     - 去除查大数据量的bug
     - 年轻代变大，避免触发动态年龄判断，部分垃圾对象进入老年代
     - -Xms1536M -Xmx1536M -Xmn1024M -Xss256K -XX:SurvivorRatio=5 -XX:PermSize=256M -XX:MaxPermSize=256M - XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFraction=92 - XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:+PrintGCDetails -XX:+PrintGCTimeStamps - XX:+PrintHeapAtGC
+### 线上fullgc每秒一次
+- 排查是不是代码里使用System.gc()会指挥JVM去尝试执行一次Full GC
+- 推荐使用参数禁用-XX:+DisableExplicitGC 不允许通过代码触发GC。
