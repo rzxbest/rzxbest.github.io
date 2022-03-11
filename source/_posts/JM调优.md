@@ -294,10 +294,71 @@ G1中新生代（Eden、Survivor）、老年代的逻辑概念，-XX:G1NewSizePe
     - 内存泄漏，无法被回收   代码优化
 
 ### 应该如何在面试中回答JVM生产优化问题?
-归纳总结出来一套通用的方法付论
-负责的系统，假设数据量和访问量暴增10倍，或者100倍，此时会不会出现频繁Full GC的 问题?
-如果会的话，那么一旦发生了，如何定位、分析和解决?
-说自己的系统可能在哪些情况下发生频繁Full GC，在压测的时候就发现了这 些问题，然后你是如何进行JVM性能优化的!
+- 归纳总结出来一套通用的方法付论
+    - 堆内存大小设置 
+        - -Xms3G -Xmx3G  最大最小堆设置相同，避免内存伸缩时造成gc导致卡顿
+        - -Xmn2G 设置新生代的大小 -XX:SurvivorRatio=8设置eden与survivor区比例
+    - 元空间
+        - -XX:MetaspaceSize=512m
+        - -XX:MaxMetaspaceSize=512m
+    - gc日志
+        -  -XX:+PrintGCDetails -XX:+PrintGCTimeStamps  -Xloggc:/gc.log
+    - 栈大小
+        - -Xss1M
+    - 垃圾收集器设置
+        - -XX:+UseParNewGC
+        - -XX:+UseConcMarkSweepGC
+        - -XX:+UseG1GC
+    - 垃圾收集器相关参数设置
+        - -XX:CMSInitiatingOccupancyFaction=92 cms老年代内存大小发生fullgc,可以设置稍微小，降低发生fullgc的时间
+        - -XX:+UseCMSCompactAtFullCollection - XX:CMSFullGCsBeforeCompaction=0 压缩碎片，每次都压缩吗
+        - -XX:+CMSParallelInitialMarkEnabled CMS垃圾回收器的“初始标记”阶段开启多线程并发执行
+        - -XX:+CMSScavengeBeforeRemark 会在CMS的重新标记阶段之前，尽量执行一次Young GC
+        - -XX:+UseCMSInitiatingOccupancyOnly 只使用指定的值，避免伸缩
+    - oom的参数设置
+        - -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/usr/local/app/oom
+
+    - 预防System.gc()
+        - -XX:+DisableExplicitGC 不容许代码控制gc
+- 负责的系统，假设数据量和访问量暴增10倍，或者100倍，此时会不会出现频繁Full GC的 问题?如果会的话，那么一旦发生了，如何定位、分析和解决?
+    - 负责的系统主要的业务借款，用户量大概有2000万，日活500万，集中在下午4～6点会进行借款
+    - 目前生产机器4核8G配置给jvm4G
+    - 借款的接口并发 每秒进入借款页面5000，借款相关接口并发10000 
+    - 核心接口 产生新对象平均20 字段数平均20个  4*20B*20=2k 扩大10倍～20倍 20k
+    - 部署8台机器 接口并发1000接口/s 一秒产生20m对象  平均80s就会young gc一次 
+- 说自己的系统可能在哪些情况下发生频繁Full GC，在压测的时候就发现了这 些问题，然后你是如何进行JVM性能优化的!
+    
 
 
+### oom
+- 元空间
+    - -XX:MetaspaceSize=512m -XX:MaxMetaspaceSize=512m
+    - 元空间gc的条件：类的类加载器先要被回收，类的所有对象实例都要被回收
+    - 在上线系统的时候对Metaspace区域直接用默认的参数,默认的太小
+    - 用cglib之类的技术动态生成一些类，一旦代码中没有控制好，导致生成的类过多，导致元空间满，从而引发oom
+- 栈内存
+    - 递归调用
+- 堆内存
+    - 高并发场景，导致ygc后很多请求还没处理完毕，存活对象太多，可能就在Survivor区域放不下了，只能进入到老年代，老年代很快就会放满。又有一批对象生成后younggc后仍有大量存活对象，需要放到老年代，此时老年代满了，就要触发fullgc,fullgc之后仍然放不下对象就会oom
 
+### 大型计算系统oom了
+- 从数据存储系统读出并计算，计算完成推送Kafka
+- 发送Kafka失败就要重试
+- 假设Kafka宕机，系统计算结果越来越多，最终oom
+- 解决方案，当Kafka宕机时，写本地存储
+
+### oom监控方案
+- 主动监控：监控系统，监控cpu,内存，监控fullgc次数
+- 被动监控：
+    - 系统宕机，通知
+    - 每天观察系统日志
+### 系统宕机时dump
+-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/usr/local/app/oom
+
+### netty nio 堆外内存溢出
+当堆外内存都被大量的DirectByteBuffer对象关联使用了，再要使用更多的堆外内存，那么就会报内存溢出了
+系统承载的是超高并发，复杂压力很高，瞬时大量请求过来，创建了过多的DirectByteBuffer占用了大量的堆外内存，此时再继续想要使用堆外内存，就会内存溢出
+
+### rpc oom
+rpc传输需要将对象序列化成字节，比如服务A的Request类有15个字段，序列化成字节流给你发送过来了，服务B的Request类只有10个字段，有的字段名字还不一 样，那么反序列化的时候就会失败，代码中写的逻辑是，一旦反序列化失败了，此时就会开辟一个byte[]数组，默认大小是4GB，然后把对方的字节流原封不动的放进 去。
+垃圾处理逻辑，序列化失败应该返回错误的响应码
