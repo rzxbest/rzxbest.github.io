@@ -273,4 +273,24 @@ G1中新生代（Eden、Survivor）、老年代的逻辑概念，-XX:G1NewSizePe
     - https://www.eclipse.org/mat/downloads.php
     - MAT上有一个工具栏，Leak Suspects，内存泄漏的分析
 
+### 处理数据量巨大的系统前端页面卡顿
+- jstat -gc pid 1000 1000 发现fullgc 耗时10s
+- 堆分配了20G的内存，其中10G给了年轻代，10G给了老年代
+- Eden区大概1分钟左右就会塞满，young gc 每次都会有几个g进入老年代
+- 系统运行的时候在产生大量的对象，而且处理的极其的慢
+
+### 调优到底该怎么做
+- 原则:尽可能让每次Young GC后存活对象远远小于Survivor区域，避免对象频繁进入老年代触发Full GC。
+- 新上线系统进行压测，模拟生产环境压力，用jstat观察jvm内存变化
+- 频繁gc表现：
+    - 机器cpu负载过高
+    - fullgc报警
+    - 无法处理请求或者响应慢
+- 频繁gc的原因
+    - 一次性加载过多数据进入内存，很多大对象，导致大对象进入老年代  打内存快照 mat分析
+    - 系统高并发导致频繁young gc，每次young gc 存活的对象太多，内存分配不合理，survivor区太小，导致对象进入老年代，频繁触发fullgc jstat观察，然后调大survivor区，调大年轻代
+    - 永久代因为加载类过多触发fullgc  打内存快照 mat分析
+    - 调用System.gc()  代码优化
+    - 内存泄漏，无法被回收   代码优化
+
 
