@@ -257,4 +257,20 @@ G1中新生代（Eden、Survivor）、老年代的逻辑概念，-XX:G1NewSizePe
     - -Xms1536M -Xmx1536M -Xmn1024M -Xss256K -XX:SurvivorRatio=5 -XX:PermSize=256M -XX:MaxPermSize=256M - XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFraction=92 - XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:+PrintGCDetails -XX:+PrintGCTimeStamps - XX:+PrintHeapAtGC
 ### 线上fullgc每秒一次
 - 排查是不是代码里使用System.gc()会指挥JVM去尝试执行一次Full GC
-- 推荐使用参数禁用-XX:+DisableExplicitGC 不允许通过代码触发GC。
+- 推荐使用参数禁用-XX:+DisableExplicitGC 不允许通过代码触发GC
+
+### mat 内存泄漏分析利器
+- 频繁Full GC的原因：
+    -  内存分配不合理，导致对象频繁进入老年代，进而引发频繁的Full GC; 
+    - 存在内存泄漏等问题，就是内存里驻留了大量的对象塞满了老年代，导致稍微有一些对象进入老年代就会引发Full GC; 
+    - 永久代里的类太多，触发了Full GC
+- 大促系统 突然卡顿严重
+    - 线程太多 负载重
+    - JVM fullgc
+- jstat 分析得出fullgc频繁 jstat -gc pid 1000 1000
+- jmap -dump:live,file=/data.hprof  pid dump文件导入visualvm可视化图形界面分析
+- mat工具分析
+    - https://www.eclipse.org/mat/downloads.php
+    - MAT上有一个工具栏，Leak Suspects，内存泄漏的分析
+
+
