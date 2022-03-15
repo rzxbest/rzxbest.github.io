@@ -158,10 +158,32 @@ B+Tree相对于B-Tree有几点不同：
         4. 重复上面 3 步。
     - 整个过程会读取 t2 表的所有数据(扫描100行)，然后遍历这每行数据中字段 a 的值，根据 t2 表中 a 的值索引扫描 t1 表 中的对应行(扫描100次 t1 表的索引，1次扫描可以认为最终只扫描 t1 表一行完整数据，也就是总共 t1 表也扫描了100 行)。因此整个过程扫描了 200 行。
     - 如果被驱动表的关联字段没索引，使用NLJ算法性能会比较低(下面有详细解释)，mysql会选择Block Nested-Loop Join 算法。
-- 基于块的嵌套循环连接 Block Nested-Loop Join(BNL)算法：连接字段无索引
+- 基于块的嵌套循环连接 Block Nested-Loop Join(BNL)算法：被驱动表连接字段无索引
     - 把驱动表的数据读入到 join_buffer 中，然后扫描被驱动表，把被驱动表每一行取出来跟 join_buffer 中的数据做对比。 
     - select*from t1 inner join t2 on t1.b= t2.b; 这里假设t2小表（100条） t1大表 （10000）
         1. 把 t2 的所有数据放入到 join_buffer 中
         2. 把表 t1 中每一行取出来，跟 join_buffer 中的数据做对比 3. 返回满足 join 条件的数据
     - 整个过程对表 t1 和 t2 都做了一次全表扫描，因此扫描的总行数为10000(表 t1 的数据总量) + 100(表 t2 的数据总量) = 10100。并且 join_buffer 里的数据是无序的，因此对表 t1 中的每一行，都要做 100 次判断，所以内存中的判断次数是 100 * 10000= 100 万次。
 
+被驱动表的关联字段没索引为什么要选择使用 BNL 算法而不使用 Nested-Loop Join 呢? 
+如果上面第二条sql使用 Nested-Loop Join，那么扫描行数为 100 * 10000 = 100万次，这个是磁盘扫描。
+很显然，用BNL磁盘扫描次数少很多，相比于磁盘扫描，BNL的内存计算会快得多。
+
+### in和exsits优化 ：小表驱动大表
+- A表与B表的ID字段应建立索引
+- in:当B表的数据集小于A表的数据集时，in优于exists
+```
+    select * from A where id in(select id from B)
+    等价于 
+    for  bid in select * from B
+        select * from A where id = bid
+
+```
+- exists:当A表的数据集小于B表的数据集时，exists优于in
+```
+select * from A where exists(select 1 from B where B.id=A.id)
+ 等价于
+ for(select * from A){
+ select * from B where B.id = A.id
+}
+```
