@@ -134,4 +134,13 @@ B+Tree相对于B-Tree有几点不同：
 
 如果全部使用sort_buffer内存排序一般情况下效率会高于磁盘文件排序，但不能因为这个就随便增 大sort_buffer(默认1M)，mysql很多参数设置都是做过优化的，不要轻易调整。
 
+### 分页查询优化
+例如：select * from employees limit 10000,10 
+从表 employees 中取出从 10001 行开始的 10 行记录。看似只查询了 10 条记录，实际这条 SQL 是先读取 10010 条记录，然后抛弃前 10000 条记录，然后读到后面 10 条想要的数据。因此要查询一张大表比较靠后的数据，执行效率 是非常低的。
+
+- 按照主键排序并limit：条件：主键自增且连续，结果是按照主键排序的
+    select * from employees where id > 90000 limit 5; 没单独加 order by，表示通过主键排序
+- 根据非主键字段排序的分页查询:连接子查询，子查询使用覆盖索引
+    select * from employees ORDER BY name limit 90000,5; name字段有索引，但是查询计划显示没有走索引，使用索引比全表扫描成本高
+    优化方案：select * from employees e inner join (select id from employees order by name limit 90000,5) eq on eq.id = e.id
 
