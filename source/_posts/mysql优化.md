@@ -115,3 +115,19 @@ B+Tree相对于B-Tree有几点不同：
     - 双路排序(回表排序模式):是首先根据相应的条件取出相应的排序字段和可以直接定位行数据的行 ID，然后在 sort buffer 中进行排序，排序完后需要再次取回其它需要的字段;用trace工具 可以看到sort_mode信息里显示< sort_key, rowid >
 
     - MySQL 通过比较系统变量 max_length_for_sort_data(默认1024字节) 的大小和需要查询的字段总大小来 判断使用哪种排序模式。如果 max_length_for_sort_data 比查询字段的总长度大，那么使用 单路排序模式; 如果 max_length_for_sort_data 比查询字段的总长度小，那么使用 双路排序模式。
+
+例如：select * from a_table where b = '111' order by c; 注：字段b建立索引，字段c无索引
+- 单路排序:
+    1. 索引b找到第一个满足 b = '111' 条件的主键id 
+    2. 根据主键 id 取出整行，取出所有字段的值，存入 sort_buffer 中 
+    3. 从索引b找到下一个满足 b = '111' 条件的主键 id 
+    4. 重复步骤 2、3 直到不满足  b = '111' 
+    5. 对 sort_buffer 中的数据按照字段 c 进行排序
+    6. 返回结果给客户端
+- 双路排序: set max_length_for_sort_data = 10; ‐‐设置表所有字段长度总和肯定大于10字节
+    1. 从索引 b 找到第一个满足 b = '111' 的主键id
+    2. 根据主键 id 取出整行，把排序字段 c 和主键 id 这两个字段放到 sort buffer 中 
+    3. 从索引 b 取下一个满足 b = '111' 记录的主键 id
+    4. 重复 3、4 直到不满足 b = ‘111’
+    5. 对 sort_buffer 中的字段 c 和主键 id 按照字段 c 进行排序
+    6. 遍历排序好的 id 和字段 c，按照 id 的值回到原表中取出 所有字段的值返回给客户端
