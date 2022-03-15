@@ -144,3 +144,24 @@ B+Tree相对于B-Tree有几点不同：
     select * from employees ORDER BY name limit 90000,5; name字段有索引，但是查询计划显示没有走索引，使用索引比全表扫描成本高
     优化方案：select * from employees e inner join (select id from employees order by name limit 90000,5) eq on eq.id = e.id
 
+### join关联优化
+- mysql的表关联常见有两种算法
+    - Nested-Loop Join 算法
+    - Block Nested-Loop Join 算法
+- 嵌套循环连接 Nested-Loop Join(NLJ)算法 ：优化器一般会优先选择小表做驱动表，执行计划 Extra 中未出现 Using join buff
+    - 循环地从第一张表(称为驱动表)中读取行，在这行数据中取到关联字段，根据关联字段在另一张表(被驱动表)里取出满足条件的行，然后取出两张表的结果合集。
+    - select*from t1 inner join t2 on t1.a= t2.a; 这里假设t2小表（100条） t1大表 （10000）
+    - 上面sql的大致流程如下:
+        1. 从表 t2 中读取一行数据;
+        2. 从第 1 步的数据中，取出关联字段 a，到表 t1 中查找;
+        3. 取出表 t1 中满足条件的行，跟 t2 中获取到的结果合并，作为结果返回给客户端; 
+        4. 重复上面 3 步。
+    - 整个过程会读取 t2 表的所有数据(扫描100行)，然后遍历这每行数据中字段 a 的值，根据 t2 表中 a 的值索引扫描 t1 表 中的对应行(扫描100次 t1 表的索引，1次扫描可以认为最终只扫描 t1 表一行完整数据，也就是总共 t1 表也扫描了100 行)。因此整个过程扫描了 200 行。
+    - 如果被驱动表的关联字段没索引，使用NLJ算法性能会比较低(下面有详细解释)，mysql会选择Block Nested-Loop Join 算法。
+- 基于块的嵌套循环连接 Block Nested-Loop Join(BNL)算法：连接字段无索引
+    - 把驱动表的数据读入到 join_buffer 中，然后扫描被驱动表，把被驱动表每一行取出来跟 join_buffer 中的数据做对比。 
+    - select*from t1 inner join t2 on t1.b= t2.b; 这里假设t2小表（100条） t1大表 （10000）
+        1. 把 t2 的所有数据放入到 join_buffer 中
+        2. 把表 t1 中每一行取出来，跟 join_buffer 中的数据做对比 3. 返回满足 join 条件的数据
+    - 整个过程对表 t1 和 t2 都做了一次全表扫描，因此扫描的总行数为10000(表 t1 的数据总量) + 100(表 t2 的数据总量) = 10100。并且 join_buffer 里的数据是无序的，因此对表 t1 中的每一行，都要做 100 次判断，所以内存中的判断次数是 100 * 10000= 100 万次。
+
