@@ -176,7 +176,7 @@ B+Tree相对于B-Tree有几点不同：
     select * from A where id in(select id from B)
     等价于 
     for  bid in select * from B
-        select * from A where id = bid
+        select * from A where id = bid  //先扫描索引，然后在根据索引查数据
 
 ```
 - exists:当A表的数据集小于B表的数据集时，exists优于in
@@ -187,3 +187,19 @@ select * from A where exists(select 1 from B where B.id=A.id)
  select * from B where B.id = A.id
 }
 ```
+### count（*）优化
+id为主键，name普通索引
+EXPLAIN select count(1) from employees; 
+EXPLAIN select count(id) from employees;
+EXPLAIN select count(name) from employees; 
+EXPLAIN select count(*) from employees;
+四个sql的执行计划一样，说明这四个sql执行效率应该差不多，区别在于根据某个字段count不会统计字段为null值的数据行
+为什么mysql最终选择辅助索引而不是主键聚集索引?因为二级索引相对主键索引存储数据更少，检索性能应该更高
+
+常见优化方法
+1、查询mysql自己维护的总行数 对于myisam存储引擎的表做不带where条件的count查询性能是很高的，因为myisam存储引擎的表的总行数会被 mysql存储在磁盘上，查询不需要计算
+对于innodb存储引擎的表mysql不会存储表的总记录行数，查询count需要实时计算
+2、show table status 如果只需要知道表总行数的估计值可以用如下sql查询，性能很高
+3、将总数维护到Redis里 插入或删除表数据行的时候同时维护redis里的表总行数key的计数值(用incr或decr命令)，但是这种方式可能不准，很难 保证表操作和redis操作的事务一致性
+4、增加计数表 插入或删除表数据行的时候同时维护计数表，让他们在同一个事务里操作
+   
