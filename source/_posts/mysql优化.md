@@ -96,3 +96,22 @@ B+Tree相对于B-Tree有几点不同：
 - 索引问题
     - 官方文档：使用is NULL和范围查询都是可以和正常一样使用索引的，只不过在某些场景下，由于mysql的执行策略导致索引失效。
     - sql执行过程中，到优化器阶段，会选择使用什么索引比较合理，sql具体执行方案在这里确定下来，索引列存在NULL就会导致优化器在做索引选择的时候更复杂，更加难以优化。
+
+### 排序优化
+- MySQL支持两种方式的排序filesort和index，Using index是指MySQL扫描索引本身完成排序。index效率高，filesort效率低。
+    - order by满足两种情况会使用Using index。
+        - order by语句使用索引最左前列。
+        - 使用where子句与order by子句条件列组合满足索引最左前列。 
+    - 尽量在索引列上完成排序，遵循索引建立(索引创建的顺序)时的最左前缀法则。
+    - 如果order by的条件不在索引列上，就会产生Using filesort。
+    - 能用覆盖索引尽量用覆盖索引
+    - group by与order by很类似，其实质是先排序后分组，遵照索引创建顺序的最左前缀法则。对于group by的优化如果不需要排序的可以加上order by null禁止排序。注意，where高于having，能写在where中 的限定条件就不要去having限定了。
+
+
+
+- Using filesort文件排序原理详解 filesort文件排序方式
+    - 单路排序:是一次性取出满足条件行的所有字段，然后在sort buffer中进行排序;用trace工具可 以看到sort_mode信息里显示< sort_key, additional_fields >或者< sort_key, packed_additional_fields >
+   
+    - 双路排序(回表排序模式):是首先根据相应的条件取出相应的排序字段和可以直接定位行数据的行 ID，然后在 sort buffer 中进行排序，排序完后需要再次取回其它需要的字段;用trace工具 可以看到sort_mode信息里显示< sort_key, rowid >
+
+    - MySQL 通过比较系统变量 max_length_for_sort_data(默认1024字节) 的大小和需要查询的字段总大小来 判断使用哪种排序模式。如果 max_length_for_sort_data 比查询字段的总长度大，那么使用 单路排序模式; 如果 max_length_for_sort_data 比查询字段的总长度小，那么使用 双路排序模式。
