@@ -66,6 +66,55 @@ B+Tree相对于B-Tree有几点不同：
     实际情况中每个节点可能不能填充满，因此在数据库中，B+Tree的高度一般都在2-4层。
     mysql的InnoDB存储引擎在设计时是将根节点常驻内存的，也就是说查找某一键值的行记录时最多只需要1~3次磁盘I/O操作。
 
+## 执行计划
+### explain两个变种
+- explain extended:会在 explain 的基础上额外提供一些查询优化的信息，紧随其后通过 show warnings 命令可以得到优化后的查询语句，从而看出优化器优化了什么。
+    - 例如：explain extended select * from film where id = 1;
+    - sshow warnings;
+- explain partitions:相比 explain 多了个 partitions 字段，如果查询是基于分区表的 话，会显示查询将访问的分区。
+
+### explain中的列
+- id列
+    - select语句的编号，越大越先执行
+    - 相同编号，从上往下执行
+- select_type列
+    - simple 简单查询
+    - primary 复杂查询最外层的查询
+    - subquery 子查询但是不包括from后的子查询
+    - derived from 后的子查询
+    - union union后的select
+- table列 查询的表
+    - 当from子句中有子查询时，table列是 <derivenN> 格式，表示当前查询依赖 id=N 的查 询，于是先执行 id=N 的查询
+    - 当有 union 时，UNION RESULT 的 table 列的值为<union1,2>，1和2表示参与 union 的 select 行id
+- type列：查询类型
+    - system > const > eq_ref > ref > range > index > ALL 一般来说，得保证查询达到range级别，最好达到ref
+    - const, system:mysql能对查询的某部分进行优化并将其转化成一个常量
+    - eq_ref:primary key 或 unique key 索引的所有部分被连接使用 ，最多只会返回一条符合条件的记录。
+    - ref: 简单 select 查询，name是普通索引(非唯一索引)；关联表查询，使用联合索引连接
+    - range：范围扫描通常出现在 in(), between ,> ,<, >= 等操作中。使用一个索引来检索给定范围的行。
+    - index:扫描全表索引
+    - ALL:全表扫描，
+- possible_keys列
+    可能使用哪些索引来查找
+- key列
+    mysql实际采用哪个索引来优化对该表的访问
+- key_len列
+    - mysql在索引里使用的字节数，算出具体使用了索引中的哪些列。
+    - key_len计算规则如下: 字符串:char(n):n字节长度;varchar(n):2字节存储字符串长度，如果是utf-8，则长度 3n +2。数值类型:tinyint:1字节;smallint:2字节;int:4字节 ;bigint:8字节。时间类型:date:3字节;timestamp:4字节;datetime:8字节
+    - 如果字段允许为 NULL，需要1字节记录是否为 NULL
+    - 索引最大长度是768字节，当字符串过长时，mysql会做一个类似左前缀索引的处理，将前半部分的字符提取出来做索引。
+- ref列 key列记录的索引中，表查找值所用到的列或常量，常见的有:const(常量)，字段名
+- rows列 mysql估计要读取并检测的行数，注意不是结果集里的行数。
+- Extra列:额外信息
+    - 1)Using index:查询的列被索引覆盖，并且where筛选条件是索引的是前导列
+    - 2)Using where:查询的列未被索引覆盖，where筛选条件非索引的前导列
+    - 3)Using index condition:查询的列不全在索引中，where条件中是一个前导列的范围；查询列不完全被索引覆盖，查询条件完全可以使用到索引
+    - 4)Using temporary:mysql需要创建一张临时表来处理查询
+    - 5)Using filesort:将用外部排序而不是索引排序，数据较小时从内存排序，否则需要在磁盘完成排序
+    - 6)Select tables optimized away:使用某些聚合函数(比如 max、min)来访问存在索引的某个字段
+    - 7) Using where Using index 查询的列被索引覆盖，并且where筛选条件是索引列之一但是不是索引的不是前导列
+    - 8) NULL 查询的列未被索引覆盖，并且where筛选条件是索引的前导列，需要回表
+
 ## 调优
 ### 为什么推荐建表时字段为not null?
 
