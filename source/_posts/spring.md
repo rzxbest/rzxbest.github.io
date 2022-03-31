@@ -144,7 +144,8 @@ public interface BeanPostProcessor {
     Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException;
 
 }
-```   
+```  
+
 应用：
     - 注解注入、AOP 
         - AnnotationAwareAspectJAutoProxyCreator 在bean的实例化、或者初始化之后创建代理，从而实现 aop 功能。
@@ -154,6 +155,7 @@ public interface BeanPostProcessor {
         - CommonAnnotationBeanPostProcessor 也是如此，只是处理不同的注解而已
         - 注解注入的检查机制RequiredAnnotationBeanPostProcessor，执行的优先级较低(通过 Ordered 控制)
         - ApplicationContextAwareProcessor
+        
 ``` 
 
 class AspectJAutoProxyBeanDefinitionParser implements BeanDefinitionParser {
@@ -179,6 +181,8 @@ public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorA
  }
 }
 ``` 
+
+
 ``` 
 class ApplicationContextAwareProcessor implements BeanPostProcessor {
 
@@ -268,4 +272,4 @@ public class ScheduledAnnotationBeanPostProcessor
 ```
 
 ### 扩展点之间的调用顺序
-![a](a.jpeg)
+![a](a.png)
