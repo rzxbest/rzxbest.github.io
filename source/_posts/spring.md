@@ -267,3 +267,5 @@ public class ScheduledAnnotationBeanPostProcessor
 }
 ```
 
+### 扩展点之间的调用顺序
+![a](a.jpeg)
