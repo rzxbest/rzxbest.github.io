@@ -114,11 +114,11 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
     }
 }
 
-```       
+```    
 
 ### InstantiationAwareBeanPostProcessor接口
 
-``` 
+```
 public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
     Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) throws BeansException;
     boolean postProcessAfterInstantiation(Object bean, String beanName) throws BeansException;
@@ -194,7 +194,7 @@ public interface BeanPostProcessor {
     Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException;
 
 }
-```  
+```
 
 应用：
 - 注解注入、AOP 
@@ -206,7 +206,7 @@ public interface BeanPostProcessor {
     - 注解注入的检查机制RequiredAnnotationBeanPostProcessor，执行的优先级较低(通过 Ordered 控制)
     - ApplicationContextAwareProcessor
 
-``` 
+```
 
 class AspectJAutoProxyBeanDefinitionParser implements BeanDefinitionParser {
  @Override
@@ -230,10 +230,10 @@ public class AnnotationAwareAspectJAutoProxyCreator extends AspectJAwareAdvisorA
         return bean;
  }
 }
-``` 
+```
 
 
-``` 
+```
 class ApplicationContextAwareProcessor implements BeanPostProcessor {
 
     @Override
@@ -272,7 +272,7 @@ public class CommonAnnotationBeanPostProcessor extends InitDestroyAnnotationBean
     }
     
 }
-``` 
+```
 
 ### invokeAware
 实现BeanFactoryAware接口的类，会由容器执行setBeanFactory方法将当前的容器BeanFactory注入到类中
