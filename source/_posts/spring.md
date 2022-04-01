@@ -88,6 +88,15 @@ public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProc
     void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException;
 }
 
+在 spring 初始化容器之后，解析Class 为一个BeanDefinition 之前的时候去执行， spring 中有一个开天辟地的类 ConfigurationClassPostProcessor 就是实现了该接口， ConfigurationClassPostProcessor 通过重写 这个方法
+
+第一步：去扫描加了 @Configuration 注解的这些类，判断是否是AnnotatedBeanDefinition类型的，将这些类去打上 Lite/Full 的属性，以便后续使用 。
+第二步：去实现扫描basePackage下的加了 @Service @Controller @Component 的这些类 将这些类变成为一个BeanDefinition 注册到 Spring 的BeanDefinitionMap中去 。
+第三步： 去解析 @import，实现 ImportSelector接口的，实现 ImportBeanDefinitionRegistrar 接口的 这些类的方法，将对应的bean 解析为BeanDefinition，注册到BeanDefinitionMap 中
+注意： 在新的Mybatis-spring 的框架中，也使用了到了这个接口 MapperScannerConfigurer 这个扫描配置类 也实现了这个接口！ 重写了postProcessBeanDefinitionRegistry() 用于创建扫描器对象，去扫描mybatis 里的那些接口转化为BeanDefinition到容器中去
+作用： 有了参数 registry 的对象，就能手动向spring容器添加 自定义的BeanDefinition registry 提供了添加的 API，但是一般我们不调用 因为在spring里的执行顺序太早了
+
+
 ```
 应用：
 - spring 集成 mybatis，使用 spring 提供的扫描功能，为我们的Dao接口生成实现类而不需要编写具体的实现类，简化了大量的冗余代码          
