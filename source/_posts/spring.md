@@ -114,7 +114,7 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
     }
 }
 
-```    
+```
 
 ### InstantiationAwareBeanPostProcessor接口
 
