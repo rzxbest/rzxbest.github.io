@@ -31,6 +31,7 @@ public interface BeanFactoryPostProcessor {
         - 有时候整个项目工程中bean的数量有上百个，而大部分单测依赖都是整个工程的xml，导致单测执行时需要很长时间（大部分时间耗费在xml中数百个单例非懒加载的bean的实例化及初始化过程）
         - 解决方法：利用Spring提供的扩展点将xml中的bean设置为懒加载模式，省去了Bean的实例化与初始化时间
     - BeanFactoryPostProcessor 来处理占位符 ${...}，关键的实现类是 PropertySourcesPlaceholderConfigurer，遍历所有的 BeanDefinition，如果 PropertyValue 存在这样的占位符，则会进行解析替换。
+    
 ```
 public class LazyBeanFactoryProcessor implements BeanFactoryPostProcessor {
     @Override
@@ -43,8 +44,7 @@ public class LazyBeanFactoryProcessor implements BeanFactoryPostProcessor {
         }
     }
 }
-```
-```
+
 public class PropertySourcesPlaceholderConfigurer extends PlaceholderConfigurerSupport implements EnvironmentAware {
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
@@ -87,11 +87,15 @@ BeanDefinitionRegistryPostProcessor 是 BeanFactoryPostProcessor 的子类，可
 public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProcessor {
     void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException;
 }
+
 ```
+
 应用：
     - spring 集成 mybatis，使用 spring 提供的扫描功能，为我们的Dao接口生成实现类而不需要编写具体的实现类，简化了大量的冗余代码          
         - mybatis-spring 框架就是利用 BeanDefinitionRegistryPostProcessor通过编码的方式往spring容器中添加 bean。
         - MapperScannerConfigurer 重写了 postProcessBeanDefinitionRegistry方法，扫描Dao接口的BeanDefinition，并将BeanDefinition注册到 spring容器中。
+
+
 ```
 public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProcessor, 
     InitializingBean, ApplicationContextAware, BeanNameAware {
@@ -110,6 +114,7 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
         scanner.scan(StringUtils.tokenizeToStringArray(this.basePackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
     }
 }
+
 ```       
 
 ### InstantiationAwareBeanPostProcessor接口
@@ -155,7 +160,7 @@ public interface BeanPostProcessor {
         - CommonAnnotationBeanPostProcessor 也是如此，只是处理不同的注解而已
         - 注解注入的检查机制RequiredAnnotationBeanPostProcessor，执行的优先级较低(通过 Ordered 控制)
         - ApplicationContextAwareProcessor
-        
+
 ``` 
 
 class AspectJAutoProxyBeanDefinitionParser implements BeanDefinitionParser {
