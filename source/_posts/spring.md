@@ -324,5 +324,103 @@ public class ScheduledAnnotationBeanPostProcessor
 }
 ```
 
+### FactoryBean 扩展点
+FactoryBean主要用来定制化Bean的创建逻辑。
+
+FactoryBean 接口提供了三个方法：
+- Object getObject()：返回这个 FactoryBean 所创建的对象。
+- boolean isSingleton()：返回 FactoryBean 所创建的对象是否为单例，默认返回 true。
+- Class getObjectType()：返回这个 FactoryBean 所创建的对象的类型，如果我们能确认返回对象的类型的话，我们应该正常对这个方法做出实现，而不是返回 null。
+
+假设定义了一个FactoryBean，名为MyFactoryBean，当我们调用 getBean("MyFactoryBean")方法时返回的并不是这个FactoryBean，而是这个FactoryBean所创建的 Bean，如果我们想获取到这个FactoryBean 需要在名字前面拼接"&"，例如这种形式：getBean("&MyFactoryBean")
+
+```
+public static boolean isFactoryDereference(@Nullable String name) {
+    return name != null && name.startsWith("&");
+}
+
+protected Object getObjectForBeanInstance(Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
+    //判断beanName是不是&开头
+    if (BeanFactoryUtils.isFactoryDereference(name)) {
+        if (beanInstance instanceof NullBean) {
+            return beanInstance;
+        } else if (!(beanInstance instanceof FactoryBean)) {
+            throw new BeanIsNotAFactoryException(beanName, beanInstance.getClass());
+        } else {
+            if (mbd != null) {
+                mbd.isFactoryBean = true;
+            }
+
+            return beanInstance;
+        }
+    }//判断beanInstance 不是factory bean的子类直接返回 
+    else if (!(beanInstance instanceof FactoryBean)) {
+        return beanInstance;
+    } 
+    // beanname非&开头，且factory bean的子类
+    else {
+        Object object = null;
+        if (mbd != null) {
+            mbd.isFactoryBean = true;
+        } else {
+            //从缓存里取对象
+            object = this.getCachedObjectForFactoryBean(beanName);
+        }
+        //缓存没有取到
+        if (object == null) {
+            FactoryBean<?> factory = (FactoryBean)beanInstance;
+            if (mbd == null && this.containsBeanDefinition(beanName)) {
+                mbd = this.getMergedLocalBeanDefinition(beanName);
+            }
+
+            boolean synthetic = mbd != null && mbd.isSynthetic();
+            //调用factorybean getobject方法
+            object = this.getObjectFromFactoryBean(factory, beanName, !synthetic);
+        }
+
+        return object;
+    }
+}
+
+
+protected Object getObjectFromFactoryBean(FactoryBean<?> factory, String beanName, boolean shouldPostProcess) {
+        if (factory.isSingleton() && this.containsSingleton(beanName)) {
+            synchronized(this.getSingletonMutex()) {
+                Object object = this.factoryBeanObjectCache.get(beanName);
+                if (object == null) {
+                    //调用factorybean getobject方法
+                    object = this.doGetObjectFromFactoryBean(factory, beanName);
+                    Object alreadyThere = this.factoryBeanObjectCache.get(beanName);
+                
+                if (alreadyThere != null) {
+                        object = alreadyThere;
+                    } else {
+                        if (shouldPostProcess) {
+                            if (this.isSingletonCurrentlyInCreation(beanName)) {
+                                return object;
+                            }
+
+                            this.beforeSingletonCreation(beanName);
+
+                            try {
+                                object = this.postProcessObjectFromFactoryBean(object, beanName);
+                            } catch (Throwable var14) {
+                                throw new BeanCreationException(beanName, "Post-processing of FactoryBean's singleton object failed", var14);
+                            } finally {
+                                this.afterSingletonCreation(beanName);
+                            }
+                        }
+                        //判断是否单例，存缓存里
+                        if (this.containsSingleton(beanName)) {
+                            this.factoryBeanObjectCache.put(beanName, object);
+                        }
+                    }    
+                }
+            }
+        }
+}
+
+```
+
 ### 扩展点之间的调用顺序
 ![a](a.png)
