@@ -89,11 +89,10 @@ public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProc
 }
 
 ```
-
 应用：
-    - spring 集成 mybatis，使用 spring 提供的扫描功能，为我们的Dao接口生成实现类而不需要编写具体的实现类，简化了大量的冗余代码          
-        - mybatis-spring 框架就是利用 BeanDefinitionRegistryPostProcessor通过编码的方式往spring容器中添加 bean。
-        - MapperScannerConfigurer 重写了 postProcessBeanDefinitionRegistry方法，扫描Dao接口的BeanDefinition，并将BeanDefinition注册到 spring容器中。
+- spring 集成 mybatis，使用 spring 提供的扫描功能，为我们的Dao接口生成实现类而不需要编写具体的实现类，简化了大量的冗余代码          
+    - mybatis-spring 框架就是利用 BeanDefinitionRegistryPostProcessor通过编码的方式往spring容器中添加 bean。
+    - MapperScannerConfigurer 重写了 postProcessBeanDefinitionRegistry方法，扫描Dao接口的BeanDefinition，并将BeanDefinition注册到 spring容器中。
 
 
 ```
@@ -119,6 +118,7 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
 
 ### InstantiationAwareBeanPostProcessor接口
 
+``` 
 public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
     Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) throws BeansException;
     boolean postProcessAfterInstantiation(Object bean, String beanName) throws BeansException;
@@ -126,14 +126,16 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
             PropertyValues pvs, PropertyDescriptor[] pds, Object bean, String beanName) throws BeansException;
 
 }
+
+```
 - BeanPostProcessor的子接口，用于在实例化之后，但在设置显式属性或自动装配之前，设置实例化之前的回调函数。通常用于抑制特定目标bean的默认实例化，例如，创建具有特殊TargetSources（池化目标，延迟初始化目标等）的代理，或者实现其他注入策略，例如字段注入。注意：这个接口是一个专用接口，主要用于框架内的内部使用。 建议尽可能实现简单的BeanPostProcessor接口，或者从InstantiationAwareBeanPostProcessorAdapter派生，以便屏蔽此接口的扩展。
 - postProcessBeforeInstantiation方法，在目标bean实例化之前创建bean，如果在这里创建了bean，则不会走默认的实例化过程，通常用来创建代理。注意工厂方法生成的bean不会走这个方法。
 - postProcessAfterInstantiation方法，在目标bean实例化后，但是没有进行属性填充前执行的方法。
 - postProcessPropertyValues方法，在将给定属性值设置到到给定的bean后，对其进行后处理。 允许检查所有的依赖关系是否被满足，例如基于bean属性设置器上的“Required”注解。还允许替换要应用的属性值，通常通过创建基于原始PropertyValues的新MutablePropertyValues实例，添加或删除特定值。
 
 接口应用
-    - spring不建议用户直接实现，如果必须在这些扩展点应用自己的回调函数，spring建议继承InstantiationAwareBeanPostProcessorAdapter，重写相应的方法即可。
-    - org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator，基于beanName创建代理，就是应用了这个接口，在生成bean前生成代理bean，从而替代默认的实例化。
+- spring不建议用户直接实现，如果必须在这些扩展点应用自己的回调函数，spring建议继承InstantiationAwareBeanPostProcessorAdapter，重写相应的方法即可。
+- org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator，基于beanName创建代理，就是应用了这个接口，在生成bean前生成代理bean，从而替代默认的实例化。
 
 
 ### SmartInstantiationAwareBeanPostProcessor
@@ -195,14 +197,14 @@ public interface BeanPostProcessor {
 ```  
 
 应用：
-    - 注解注入、AOP 
-        - AnnotationAwareAspectJAutoProxyCreator 在bean的实例化、或者初始化之后创建代理，从而实现 aop 功能。
+- 注解注入、AOP 
+    - AnnotationAwareAspectJAutoProxyCreator 在bean的实例化、或者初始化之后创建代理，从而实现 aop 功能。
         
-        - spring 根据 BeanDefinition 对bean进行实例化之后，会遍历容器内部注册的 InstantiationAwareBeanPostProcessor(BeanPostProcessor的子类)进行属性填充。
-        - AutowiredAnnotationBeanPostProcessor，它会处理 @Autowired、@Value 注解，从而完成注入的功能
-        - CommonAnnotationBeanPostProcessor 也是如此，只是处理不同的注解而已
-        - 注解注入的检查机制RequiredAnnotationBeanPostProcessor，执行的优先级较低(通过 Ordered 控制)
-        - ApplicationContextAwareProcessor
+    - spring 根据 BeanDefinition 对bean进行实例化之后，会遍历容器内部注册的 InstantiationAwareBeanPostProcessor(BeanPostProcessor的子类)进行属性填充。
+    - AutowiredAnnotationBeanPostProcessor，它会处理 @Autowired、@Value 注解，从而完成注入的功能
+    - CommonAnnotationBeanPostProcessor 也是如此，只是处理不同的注解而已
+    - 注解注入的检查机制RequiredAnnotationBeanPostProcessor，执行的优先级较低(通过 Ordered 控制)
+    - ApplicationContextAwareProcessor
 
 ``` 
 
@@ -271,12 +273,6 @@ public class CommonAnnotationBeanPostProcessor extends InitDestroyAnnotationBean
     
 }
 ``` 
-
-
-
-
-
-
 
 ### invokeAware
 实现BeanFactoryAware接口的类，会由容器执行setBeanFactory方法将当前的容器BeanFactory注入到类中
