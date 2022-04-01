@@ -31,7 +31,7 @@ public interface BeanFactoryPostProcessor {
         - 有时候整个项目工程中bean的数量有上百个，而大部分单测依赖都是整个工程的xml，导致单测执行时需要很长时间（大部分时间耗费在xml中数百个单例非懒加载的bean的实例化及初始化过程）
         - 解决方法：利用Spring提供的扩展点将xml中的bean设置为懒加载模式，省去了Bean的实例化与初始化时间
     - BeanFactoryPostProcessor 来处理占位符 ${...}，关键的实现类是 PropertySourcesPlaceholderConfigurer，遍历所有的 BeanDefinition，如果 PropertyValue 存在这样的占位符，则会进行解析替换。
-    
+
 ```
 public class LazyBeanFactoryProcessor implements BeanFactoryPostProcessor {
     @Override
@@ -136,10 +136,53 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
     - org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator，基于beanName创建代理，就是应用了这个接口，在生成bean前生成代理bean，从而替代默认的实例化。
 
 
+### SmartInstantiationAwareBeanPostProcessor
+
+```
+public interface SmartInstantiationAwareBeanPostProcessor extends InstantiationAwareBeanPostProcessor {
+ 
+// 预测Bean的类型，返回第一个预测成功的Class类型，如果不能预测返回null
+    Class<?> predictBeanType(Class<?> beanClass, String beanName) throws BeansException;
+// 选择合适的构造器，比如目标对象有多个构造器，在这里可以进行一些定制化，选择合适的构造器
+// beanClass参数表示目标实例的类型，beanName是目标实例在Spring容器中的name
+// 返回值是个构造器数组，如果返回null，会执行下一个PostProcessor的determineCandidateConstructors方法；否则选取该PostProcessor选择的构造器
+    Constructor<?>[] determineCandidateConstructors(Class<?> beanClass, String beanName) throws BeansException;
+// 获得提前暴露的bean引用。主要用于解决循环引用的问题
+// 只有单例对象才会调用此方法
+    Object getEarlyBeanReference(Object bean, String beanName) throws BeansException;
+}
+```
+
+getEarlyBeanReference调用时机
+
+```
+protected Object getEarlyBeanReference(String beanName, RootBeanDefinition mbd, Object bean) {
+        Object exposedObject = bean;
+        if (bean != null && !mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
+            for (BeanPostProcessor bp : getBeanPostProcessors()) {
+                if (bp instanceof SmartInstantiationAwareBeanPostProcessor) {
+                    SmartInstantiationAwareBeanPostProcessor ibp = (SmartInstantiationAwareBeanPostProcessor) bp;
+                    exposedObject = ibp.getEarlyBeanReference(exposedObject, beanName);
+                    if (exposedObject == null) {
+                        return null;
+                    }
+                }
+            }
+        }
+        return exposedObject;
+    }
+```
+determineCandidateConstructors调用时机
+
+检测Bean的构造器，可以检测出多个候选构造器，再有相应的策略决定使用哪一个，如AutowiredAnnotationBeanPostProcessor实现将自动扫描通过@Autowired/@Value注解的构造器从而可以完成构造器注入
+
+
+
+
 ### BeanPostProcessor
 BeanPostProcessor允许对bean的实例进行个些自定义的个性，比如检查标记接口、使用代理包装bean实例。spring可以自动检测容器中定义的 BeanPostProcessor，后续创建的bean便会被该BeanPostProcessor处理。
 
-```   
+```
 public interface BeanPostProcessor {
 
     // 初始化之后被调用，已完成注入，但是尚未执行 InitializingBean#afterPropertiesSet() 方法，或者自定义的 init 方法
