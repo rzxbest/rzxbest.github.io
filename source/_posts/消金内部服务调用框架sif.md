@@ -5,10 +5,9 @@ tags: [微服务,远程服务调用]
 top : 201
 categories: [微服务]
 ---
-# 服务端流程
+
 {% pdf ./Sif2.0.pdf %}
 
-# 客户端流程
-{% pdf ./sif2.0client.pdf %}
+
 
 
