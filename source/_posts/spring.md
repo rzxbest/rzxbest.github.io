@@ -98,7 +98,7 @@ public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProc
 作用： 有了参数 registry 的对象，就能手动向spring容器添加 自定义的BeanDefinition registry 提供了添加的 API，但是一般我们不调用 因为在spring里的执行顺序太早了
 
 
-```
+
 应用：
 - spring 集成 mybatis，使用 spring 提供的扫描功能，为我们的Dao接口生成实现类而不需要编写具体的实现类，简化了大量的冗余代码          
     - mybatis-spring 框架就是利用 BeanDefinitionRegistryPostProcessor通过编码的方式往spring容器中添加 bean。
