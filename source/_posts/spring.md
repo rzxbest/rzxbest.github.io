@@ -87,6 +87,7 @@ BeanDefinitionRegistryPostProcessor 是 BeanFactoryPostProcessor 的子类，可
 public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProcessor {
     void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException;
 }
+```
 
 在 spring 初始化容器之后，解析Class 为一个BeanDefinition 之前的时候去执行， spring 中有一个开天辟地的类 ConfigurationClassPostProcessor 就是实现了该接口， ConfigurationClassPostProcessor 通过重写 这个方法
 
