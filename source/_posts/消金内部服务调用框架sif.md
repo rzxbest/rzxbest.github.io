@@ -6,7 +6,9 @@ top : 200
 categories: [微服务]
 ---
 # 服务端流程
-{% Sif2.0.pdf %}
+{% pdf ./Sif2.0.pdf %}
 
 # 客户端流程
-{% sif2.0client.pdf %}
+{% pdf ./sif2.0client.pdf %}
+
+
