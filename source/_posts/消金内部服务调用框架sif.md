@@ -6,7 +6,7 @@ top : 200
 categories: [微服务]
 ---
 # 服务端流程
-<embed src="pdf/Sif2.0.pdf" width="100%" height="1000" type="application/pdf">
+<embed src="./Sif2.0.pdf" width="100%" height="1000" type="application/pdf">
 
 # 客户端流程
- <embed src="pdf/sif2.0client.pdf" width="100%" height="1000" type="application/pdf">
+ <embed src="./sif2.0client.pdf" width="100%" height="1000" type="application/pdf">

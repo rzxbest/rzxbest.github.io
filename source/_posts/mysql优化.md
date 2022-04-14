@@ -18,7 +18,7 @@ categories: [Mysql]
     MyISAM的主索引和数据是分开的
     InnoDB的辅助索引data域存储相应记录主键的值而不是地址
     MyISAM的辅助索引和主索引没有多大区别
-    InnoDB是聚簇索引，数据挂在逐渐索引之下
+    InnoDB是聚簇索引，数据挂在主键索引之下
 - 锁
     myisam 只支持表锁
     innodb 支持行锁
