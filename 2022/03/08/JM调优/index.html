@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"blog.imder.top","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.8.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
+<meta name="description" content="jm调优遇到了什么问题需要调优？生产环境新上线了一个系统，莫名其妙奔溃，错误日志报异常OOM 类加载过程加载 -&gt; 验证 -&gt; 准备 -&gt; 解析 -&gt; 初始化 -&gt; 使用 -&gt; 卸载 什么情况下会去加载一个类呢?何时将“.class”字节码文件中加载这个类到JVM内存里来，代码中用到这个类的时候。 验证来校验加载进来的“.class”文件中的内容，是否符合指定的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="jm调优">
+<meta property="og:url" content="https://blog.imder.top/2022/03/08/%08JM%E8%B0%83%E4%BC%98/index.html">
+<meta property="og:site_name" content="随记">
+<meta property="og:description" content="jm调优遇到了什么问题需要调优？生产环境新上线了一个系统，莫名其妙奔溃，错误日志报异常OOM 类加载过程加载 -&gt; 验证 -&gt; 准备 -&gt; 解析 -&gt; 初始化 -&gt; 使用 -&gt; 卸载 什么情况下会去加载一个类呢?何时将“.class”字节码文件中加载这个类到JVM内存里来，代码中用到这个类的时候。 验证来校验加载进来的“.class”文件中的内容，是否符合指定的">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-03-08T09:00:00.000Z">
+<meta property="article:modified_time" content="2024-03-28T16:43:20.059Z">
+<meta property="article:author" content="Ren zheng xiao">
+<meta property="article:tag" content="JAVA虚拟机">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://blog.imder.top/2022/03/08/%08JM%E8%B0%83%E4%BC%98/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://blog.imder.top/2022/03/08/%08JM%E8%B0%83%E4%BC%98/","path":"2022/03/08/\bJM调优/","title":"jm调优"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>jm调优 | 随记</title>
+  
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+  <canvas class="fireworks" style="position: fixed;left: 0;top: 0;z-index: 1; pointer-events: none;" ></canvas>
+   <script type="text/javascript" src="//cdn.bootcss.com/animejs/2.2.0/anime.min.js"></script>
+   <script type="text/javascript" src="/js/fireworks.js"></script>
+<link rel="alternate" href="/atom.xml" title="随记" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">随记</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">记一记,所学,温故而知新</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li>
+        <li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li>
+        <li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li>
+        <li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#jm%E8%B0%83%E4%BC%98"><span class="nav-number">1.</span> <span class="nav-text">jm调优</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%81%87%E5%88%B0%E4%BA%86%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98%E9%9C%80%E8%A6%81%E8%B0%83%E4%BC%98%EF%BC%9F"><span class="nav-number">1.1.</span> <span class="nav-text">遇到了什么问题需要调优？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E5%8A%A0%E8%BD%BD%E8%BF%87%E7%A8%8B"><span class="nav-number">1.2.</span> <span class="nav-text">类加载过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E4%BC%9A%E5%8E%BB%E5%8A%A0%E8%BD%BD%E4%B8%80%E4%B8%AA%E7%B1%BB%E5%91%A2"><span class="nav-number">1.2.1.</span> <span class="nav-text">什么情况下会去加载一个类呢?</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81"><span class="nav-number">1.2.2.</span> <span class="nav-text">验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%87%86%E5%A4%87"><span class="nav-number">1.2.3.</span> <span class="nav-text">准备</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E6%9E%90%E9%98%B6%E6%AE%B5"><span class="nav-number">1.2.4.</span> <span class="nav-text">解析阶段</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">1.2.5.</span> <span class="nav-text">初始化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8%E5%92%8C%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE%E6%9C%BA%E5%88%B6"><span class="nav-number">1.3.</span> <span class="nav-text">类加载器和双亲委派机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8"><span class="nav-number">1.3.1.</span> <span class="nav-text">类加载器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE%E6%9C%BA%E5%88%B6"><span class="nav-number">1.3.2.</span> <span class="nav-text">双亲委派机制</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E5%88%92%E5%88%86"><span class="nav-number">1.4.</span> <span class="nav-text">内存划分</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B9%E6%B3%95%E5%8C%BA%EF%BC%881-8%E4%B9%8B%E5%89%8D%EF%BC%89-%E5%85%83%E7%A9%BA%E9%97%B4"><span class="nav-number">1.4.1.</span> <span class="nav-text">方法区（1.8之前） 元空间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A8%8B%E5%BA%8F%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="nav-number">1.4.2.</span> <span class="nav-text">程序计数器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Java%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%A0%88"><span class="nav-number">1.4.3.</span> <span class="nav-text">Java虚拟机栈</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Java%E5%A0%86%E5%86%85%E5%AD%98"><span class="nav-number">1.4.4.</span> <span class="nav-text">Java堆内存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#jvm"><span class="nav-number">1.5.</span> <span class="nav-text">jvm</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#jvm%E5%8F%82%E6%95%B0"><span class="nav-number">1.5.1.</span> <span class="nav-text">jvm参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%90%88%E7%90%86%E8%AE%BE%E7%BD%AE%E6%B0%B8%E4%B9%85%E4%BB%A3%E5%A4%A7%E5%B0%8F"><span class="nav-number">1.5.2.</span> <span class="nav-text">如何合理设置永久代大小?</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%90%88%E7%90%86%E8%AE%BE%E7%BD%AE%E6%A0%88%E5%86%85%E5%AD%98%E5%A4%A7%E5%B0%8F"><span class="nav-number">1.5.3.</span> <span class="nav-text">如何合理设置栈内存大小</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E7%A1%AE%E5%AE%9A%E5%AF%B9%E8%B1%A1%E6%98%AF%E5%9E%83%E5%9C%BE%EF%BC%9F%E5%8F%AF%E8%BE%BE%E6%80%A7%E5%88%86%E6%9E%90%E7%AE%97%E6%B3%95GCRoot%E6%A0%B9%E7%94%B1%E9%82%A3%E4%BA%9B%E5%AF%B9%E8%B1%A1%E7%BB%84%E6%88%90%EF%BC%9F"><span class="nav-number">1.5.4.</span> <span class="nav-text">如何确定对象是垃圾？可达性分析算法GCRoot根由那些对象组成？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9E%83%E5%9C%BE%E5%AF%B9%E8%B1%A1%E4%B8%80%E5%AE%9A%E4%BC%9A%E8%A2%AB%E5%9B%9E%E6%94%B6%E5%90%97%EF%BC%9F"><span class="nav-number">1.5.5.</span> <span class="nav-text">垃圾对象一定会被回收吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%BA%E5%BC%95%E7%94%A8%E3%80%81%E8%BD%AF%E5%BC%95%E7%94%A8%E3%80%81%E5%BC%B1%E5%BC%95%E7%94%A8%E3%80%81%E8%99%9A%E5%BC%95%E7%94%A8"><span class="nav-number">1.5.6.</span> <span class="nav-text">强引用、软引用、弱引用、虚引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E7%AE%97%E6%B3%95"><span class="nav-number">1.5.7.</span> <span class="nav-text">垃圾回收算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%B9%E8%B1%A1%E4%BD%95%E6%97%B6%E4%BB%8E%E6%96%B0%E7%94%9F%E4%BB%A3%E8%BD%AC%E5%88%B0%E8%80%81%E5%B9%B4%E4%BB%A3%EF%BC%9F"><span class="nav-number">1.5.8.</span> <span class="nav-text">对象何时从新生代转到老年代？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%80%81%E5%B9%B4%E4%BB%A3%E9%87%87%E7%94%A8%E7%9A%84%E4%BB%80%E4%B9%88%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E7%AE%97%E6%B3%95%EF%BC%9F"><span class="nav-number">1.5.9.</span> <span class="nav-text">老年代采用的什么垃圾回收算法？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">1.5.10.</span> <span class="nav-text">垃圾收集器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#stw"><span class="nav-number">1.5.11.</span> <span class="nav-text">stw</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ParNew%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">1.5.12.</span> <span class="nav-text">ParNew垃圾收集器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E5%BC%8F%E4%B8%8E%E5%AE%A2%E6%88%B7%E7%AB%AF%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.5.13.</span> <span class="nav-text">服务器模式与客户端模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CMS"><span class="nav-number">1.5.14.</span> <span class="nav-text">CMS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E6%96%B9%E6%A1%88"><span class="nav-number">1.5.15.</span> <span class="nav-text">优化方案</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Concurrent-Mode-Failure"><span class="nav-number">1.5.16.</span> <span class="nav-text">Concurrent Mode Failure</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#G1-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%EF%BC%88%E9%92%88%E5%AF%B9%E5%A4%A7%E5%86%85%E5%AD%98%E6%9C%BA%E5%99%A8%E9%80%9A%E5%B8%B8%E5%BB%BA%E8%AE%AE%E9%87%87%E7%94%A8G1%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8%EF%BC%89"><span class="nav-number">1.5.17.</span> <span class="nav-text">G1 垃圾收集器（针对大内存机器通常建议采用G1垃圾回收器）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#G1%E8%B0%83%E4%BC%98"><span class="nav-number">1.5.18.</span> <span class="nav-text">G1调优</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%97%A5%E5%A4%84%E7%90%86%E4%B8%8A%E4%BA%BF%E6%95%B0%E6%8D%AE%E6%A1%88%E4%BE%8B"><span class="nav-number">1.5.19.</span> <span class="nav-text">日处理上亿数据案例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#BI%E7%B3%BB%E7%BB%9F%E6%A1%88%E4%BE%8B"><span class="nav-number">1.5.20.</span> <span class="nav-text">BI系统案例</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E6%88%98"><span class="nav-number">1.6.</span> <span class="nav-text">实战</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%89%93%E5%8D%B0gc%E6%97%A5%E5%BF%97"><span class="nav-number">1.6.1.</span> <span class="nav-text">打印gc日志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Jvm-%E5%91%BD%E4%BB%A4"><span class="nav-number">1.6.2.</span> <span class="nav-text">Jvm 命令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B0%83%E4%BC%98"><span class="nav-number">1.7.</span> <span class="nav-text">调优</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E4%BC%98%E6%96%B9%E6%A1%88"><span class="nav-number">1.7.1.</span> <span class="nav-text">调优方案</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A4%BE%E4%BA%A4app%EF%BC%8CQPS-%E5%8D%81%E4%B8%87"><span class="nav-number">1.7.2.</span> <span class="nav-text">社交app，QPS 十万</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9E%82%E7%9B%B4%E7%94%B5%E5%95%86app-%E6%AF%8F%E5%B0%8F%E6%97%B6%E6%80%BB%E4%BC%9A%E6%9C%89%E5%8D%A1%E9%A1%BF"><span class="nav-number">1.7.3.</span> <span class="nav-text">垂直电商app 每小时总会有卡顿</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A2%91%E7%B9%81%E7%9A%84fullgc-%E8%A7%82%E5%AF%9F%E5%90%8E%E5%8F%91%E7%8E%B0%E5%85%83%E7%A9%BA%E9%97%B4%E7%9A%84%E6%BB%A1%E4%BA%86"><span class="nav-number">1.7.4.</span> <span class="nav-text">频繁的fullgc 观察后发现元空间的满了</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BA%BF%E4%B8%8Afullgc%E9%A2%91%E7%B9%81"><span class="nav-number">1.7.5.</span> <span class="nav-text">线上fullgc频繁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BA%BF%E4%B8%8Afullgc%E6%AF%8F%E7%A7%92%E4%B8%80%E6%AC%A1"><span class="nav-number">1.7.6.</span> <span class="nav-text">线上fullgc每秒一次</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#mat-%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E5%88%86%E6%9E%90%E5%88%A9%E5%99%A8"><span class="nav-number">1.7.7.</span> <span class="nav-text">mat 内存泄漏分析利器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%84%E7%90%86%E6%95%B0%E6%8D%AE%E9%87%8F%E5%B7%A8%E5%A4%A7%E7%9A%84%E7%B3%BB%E7%BB%9F%E5%89%8D%E7%AB%AF%E9%A1%B5%E9%9D%A2%E5%8D%A1%E9%A1%BF"><span class="nav-number">1.7.8.</span> <span class="nav-text">处理数据量巨大的系统前端页面卡顿</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E4%BC%98%E5%88%B0%E5%BA%95%E8%AF%A5%E6%80%8E%E4%B9%88%E5%81%9A"><span class="nav-number">1.7.9.</span> <span class="nav-text">调优到底该怎么做</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BA%94%E8%AF%A5%E5%A6%82%E4%BD%95%E5%9C%A8%E9%9D%A2%E8%AF%95%E4%B8%AD%E5%9B%9E%E7%AD%94JVM%E7%94%9F%E4%BA%A7%E4%BC%98%E5%8C%96%E9%97%AE%E9%A2%98"><span class="nav-number">1.7.10.</span> <span class="nav-text">应该如何在面试中回答JVM生产优化问题?</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#oom"><span class="nav-number">1.7.11.</span> <span class="nav-text">oom</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%A7%E5%9E%8B%E8%AE%A1%E7%AE%97%E7%B3%BB%E7%BB%9Foom%E4%BA%86"><span class="nav-number">1.7.12.</span> <span class="nav-text">大型计算系统oom了</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#oom%E7%9B%91%E6%8E%A7%E6%96%B9%E6%A1%88"><span class="nav-number">1.7.13.</span> <span class="nav-text">oom监控方案</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E5%AE%95%E6%9C%BA%E6%97%B6dump"><span class="nav-number">1.7.14.</span> <span class="nav-text">系统宕机时dump</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#netty-nio-%E5%A0%86%E5%A4%96%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA"><span class="nav-number">1.7.15.</span> <span class="nav-text">netty nio 堆外内存溢出</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#rpc-oom"><span class="nav-number">1.7.16.</span> <span class="nav-text">rpc oom</span></a></li></ol></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Ren zheng xiao"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Ren zheng xiao</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.imder.top/2022/03/08/%08JM%E8%B0%83%E4%BC%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Ren zheng xiao">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="随记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          jm调优
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2022-03-08 09:00:00" itemprop="dateCreated datePublished" datetime="2022-03-08T09:00:00+00:00">2022-03-08</time>
+    </span>
+      <span class="post-meta-item">
+        <span class="post-meta-item-icon">
+          <i class="far fa-calendar-check"></i>
+        </span>
+        <span class="post-meta-item-text">更新于</span>
+        <time title="修改时间：2024-03-28 16:43:20" itemprop="dateModified" datetime="2024-03-28T16:43:20+00:00">2024-03-28</time>
+      </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/JAVA%E8%99%9A%E6%8B%9F%E6%9C%BA/" itemprop="url" rel="index"><span itemprop="name">JAVA虚拟机</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h1 id="jm调优"><a href="#jm调优" class="headerlink" title="jm调优"></a>jm调优</h1><h2 id="遇到了什么问题需要调优？"><a href="#遇到了什么问题需要调优？" class="headerlink" title="遇到了什么问题需要调优？"></a>遇到了什么问题需要调优？</h2><p>生产环境新上线了一个系统，莫名其妙奔溃，错误日志报异常OOM</p>
+<h2 id="类加载过程"><a href="#类加载过程" class="headerlink" title="类加载过程"></a>类加载过程</h2><p>加载 -&gt; 验证 -&gt; 准备 -&gt; 解析 -&gt; 初始化 -&gt; 使用 -&gt; 卸载</p>
+<h3 id="什么情况下会去加载一个类呢"><a href="#什么情况下会去加载一个类呢" class="headerlink" title="什么情况下会去加载一个类呢?"></a>什么情况下会去加载一个类呢?</h3><p>何时将“.class”字节码文件中加载这个类到JVM内存里来，代码中用到这个类的时候。</p>
+<h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><p>来校验加载进来的“.class”文件中的内容，是否符合指定的jvm规范。</p>
+<h3 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h3><p>类的类变量(static修饰的变量)分配内存空间，来一个默认的初始值，并非执行赋值</p>
+<h3 id="解析阶段"><a href="#解析阶段" class="headerlink" title="解析阶段"></a>解析阶段</h3><p>符号引用替换为直接引用</p>
+<h3 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h3><p>执行类变量的赋值语句，执行静态代码块</p>
+<h2 id="类加载器和双亲委派机制"><a href="#类加载器和双亲委派机制" class="headerlink" title="类加载器和双亲委派机制"></a>类加载器和双亲委派机制</h2><h3 id="类加载器"><a href="#类加载器" class="headerlink" title="类加载器"></a>类加载器</h3><ul>
+<li>启动类加载器<br>Bootstrap ClassLoader，负责加载Java安装目录下的“lib”目录中的核心类库</li>
+<li>扩展类加载器<br>Extension ClassLoader，负责加载Java安装目录“lib\ext”目录里面有一些类</li>
+<li>应用程序类加载器<br>Application ClassLoader，负责去加载“ClassPath”环境变量所指定的路径中的类 理解为去加载自己写好的Java代码</li>
+<li>自定义类加载器 除了上面那几种之外，还可以自定义类加载器，去根据自己的需求加载自己的类。<h3 id="双亲委派机制"><a href="#双亲委派机制" class="headerlink" title="双亲委派机制"></a>双亲委派机制</h3></li>
+<li>JVM的类加载器是有亲子层级结构的，启动类加载器是最上层的，扩展类加载器在第二层，第三层是应用程序类加载器，最后一层是自定义类加载器。</li>
+<li>双亲委派模型:先找父亲去加载，不行的话再由自己来加载。</li>
+</ul>
+<h2 id="内存划分"><a href="#内存划分" class="headerlink" title="内存划分"></a>内存划分</h2><h3 id="方法区（1-8之前）-元空间"><a href="#方法区（1-8之前）-元空间" class="headerlink" title="方法区（1.8之前） 元空间"></a>方法区（1.8之前） 元空间</h3><p>将“.class”文件里加载进来的类</p>
+<h3 id="程序计数器"><a href="#程序计数器" class="headerlink" title="程序计数器"></a>程序计数器</h3><p>写好的Java代码会被翻译成字节码，对应各种字节码指令，JVM加载类信息到内存之后，会使用自己的字节码执行引擎执行字节码指令，执行时，JVM里就需要一个特殊的内存区域，那就是“程序计数器”，这个程序计数器就是用来记录当前执行的字节码指令的位置的</p>
+<h3 id="Java虚拟机栈"><a href="#Java虚拟机栈" class="headerlink" title="Java虚拟机栈"></a>Java虚拟机栈</h3><ul>
+<li>JVM必须有一块区域是来保存每个方法内的局部变量等数据的，这个区域就是Java虚拟机栈 </li>
+<li>每个线程都有自己的Java虚拟机栈</li>
+<li>如果线程执行了一个方法，就会对这个方法调用创建对应的一个栈帧，栈帧里就有这个方法的局部变量表 、操作数栈、动态链接、方法出口</li>
+</ul>
+<h3 id="Java堆内存"><a href="#Java堆内存" class="headerlink" title="Java堆内存"></a>Java堆内存</h3><p>存放代码中创建的各种对象的</p>
+<h2 id="jvm"><a href="#jvm" class="headerlink" title="jvm"></a>jvm</h2><h3 id="jvm参数"><a href="#jvm参数" class="headerlink" title="jvm参数"></a>jvm参数</h3><ul>
+<li>-Xms:Java堆内存的大小 、-Xmx:Java堆内存的最大大小 </li>
+<li>-Xms和-Xmx，分别用于设置Java堆内存的刚开始的大小，以及允许扩张到的最大大小。</li>
+<li>-Xmn:Java堆内存中的新生代大小，扣除新生代剩下的就是老年代的内存大小,默认不设置新生代大小时，大概老年代占2/3，新生代占1/3，eden和2个survivor 8:1:1  jvm参数”- XX:SurvivorRatio=8”</li>
+<li>-XX:PermSize:永久代大小、-XX:MaxPermSize:永久代最大大小</li>
+<li>jdk1.8 用这两个-XX:MetaspaceSize和-XX:MaxMetaspaceSize替换永久代大小</li>
+<li>-Xss:每个线程的栈内存大小</li>
+</ul>
+<h3 id="如何合理设置永久代大小"><a href="#如何合理设置永久代大小" class="headerlink" title="如何合理设置永久代大小?"></a>如何合理设置永久代大小?</h3><p>一般你设置个几百MB，大体上都是够用的 因为里面主要就是存放一些类的信息</p>
+<h3 id="如何合理设置栈内存大小"><a href="#如何合理设置栈内存大小" class="headerlink" title="如何合理设置栈内存大小"></a>如何合理设置栈内存大小</h3><p>一般默认就是比如512KB到1MB</p>
+<h3 id="如何确定对象是垃圾？可达性分析算法GCRoot根由那些对象组成？"><a href="#如何确定对象是垃圾？可达性分析算法GCRoot根由那些对象组成？" class="headerlink" title="如何确定对象是垃圾？可达性分析算法GCRoot根由那些对象组成？"></a>如何确定对象是垃圾？可达性分析算法GCRoot根由那些对象组成？</h3><p>对象无引用时会被确定为垃圾对象，方法的局部变量、类的静态变量都被看为GCRoot根</p>
+<h3 id="垃圾对象一定会被回收吗？"><a href="#垃圾对象一定会被回收吗？" class="headerlink" title="垃圾对象一定会被回收吗？"></a>垃圾对象一定会被回收吗？</h3><p>不一定，如果对象重写了Object类中的finialize()方法，并且在该方法建立起与静态变量的引用关系就可以不被回收</p>
+<h3 id="强引用、软引用、弱引用、虚引用"><a href="#强引用、软引用、弱引用、虚引用" class="headerlink" title="强引用、软引用、弱引用、虚引用"></a>强引用、软引用、弱引用、虚引用</h3><p>强引用：绝对不能回收的对象<br>软引用：有的对象可有可无，如果内存实在不够了，可以回收他。<br>弱引用：与没引用是类似的，如果发生垃圾回收，就会把这个对象回收掉<br>虚引用：暂时忽略，很少用。</p>
+<h3 id="垃圾回收算法"><a href="#垃圾回收算法" class="headerlink" title="垃圾回收算法"></a>垃圾回收算法</h3><p>复制算法：内存区域划分为两块，对象就就会分配在其中一块内存空间，垃圾回收时，存活对象复制到另一块内存空间，同时原分配对象空间清除所有对象<br>缺点：内存使用率太低 优点：不会产生内存碎片，不浪费内存空间</p>
+<p>复制算法做出如下优化：</p>
+<ul>
+<li>把新生代内存区域划分为三块:1个Eden区，2个Survivor区，其中Eden区占80%内存空间，每一块Survivor区各占10%内存空间</li>
+<li>刚开始对象都是分配在Eden区内的，如果Eden区快满了，此时就会触发垃圾回收，把Eden区中的存活对象都一次性转移到一块空着的Survivor区，接着Eden区就会被清空</li>
+<li>然后再次分配新对象到Eden区里，此时，Eden区和一块Survivor区里是有对象的，其中Survivor区里放的是上一次Minor GC后存活的对象。如果下次再次Eden区满，那么再次触发Minor GC，Eden区和放着上一次Minor GC后存活对象的Survivor区内的存活对象，转移到另外一块Survivor区去。然后清空eden区和上一次的survivor区</li>
+</ul>
+<h3 id="对象何时从新生代转到老年代？"><a href="#对象何时从新生代转到老年代？" class="headerlink" title="对象何时从新生代转到老年代？"></a>对象何时从新生代转到老年代？</h3><ul>
+<li>15次minor gc对象还存活。JVM参数“-XX:MaxTenuringThreshold”来设置，默认是15岁</li>
+<li>动态对象年龄判断：假如说当前放对象的Survivor区域的一些对象大小和（按照年龄排正序）大于了这块Survivor区域的内存大小的50%，那么此时大于等于这批对象年龄的对象，就可以直接进入老年代。年龄1+年龄2+年龄n的多个年龄对象总和超过了Survivor区域的50%，此时就会把年龄n以上的对象都放入老年代。</li>
+<li>大对象直接进入老年代。JVM参数，“-XX:PretenureSizeThreshold”，单位字节数，比如“1048576”字节，就是1MB。</li>
+<li>Minor GC后的对象太多无法放入Survivor区怎么办? 这个时候就必须得把这些对象直接转移到老年代去</li>
+<li>老年代空间分配担保机制<ul>
+<li>在执行任何一次Minor GC之前，JVM会先检查一下老年代可用的可用内存空间，是否大于新生代所有对象的总大小。避免Minor GC后老年代空间放不下存活对象</li>
+<li>如果老年代的内存大小是大于新生代所有对象的，此时就可以对新生代发起一次Minor GC了</li>
+<li>如果老年代的内存大小是小于新生代所有对象的，JVM“-XX:- HandlePromotionFailure”的参数是否设置,<ul>
+<li>未设置 发生一次Full GC（对老年代进行垃圾回收，同时一般会对新生代进行垃圾回收）</li>
+<li>设置表示开启老年代空间担保，接着判断老年代的内存大小，是否大于之前每一次Minor GC后进入老年代的对象的平均大小，如果大于，则Minor GC,如果小于，FullGC（年轻代+老年代+永久代）</li>
+</ul>
+</li>
+<li>如果要是Full GC过后，老年代还是没有足够的空间存放Minor GC过后的剩余存活对象，就会导致所谓的 “OOM”内存溢出</li>
+</ul>
+</li>
+</ul>
+<h3 id="老年代采用的什么垃圾回收算法？"><a href="#老年代采用的什么垃圾回收算法？" class="headerlink" title="老年代采用的什么垃圾回收算法？"></a>老年代采用的什么垃圾回收算法？</h3><ul>
+<li>标记整理算法：首先标记出来老年代当前存活的对象，接着会让这些存活对象在内存里进行移动，把存活对象尽量都挪动到一边去</li>
+<li>老年代的垃圾回收算法的速度至少比新生代的垃圾回收算法的速度慢10倍。</li>
+<li>如果系统频繁出现老年代的Full GC垃圾回收，会导致系统性能被严重影响，出现频繁卡顿的情况。<h3 id="垃圾收集器"><a href="#垃圾收集器" class="headerlink" title="垃圾收集器"></a>垃圾收集器</h3></li>
+<li>Serial和Serial Old垃圾回收器:分别用来回收新生代和老年代的垃圾对象，工作原理就是单线程运行，STW，一般几乎不用。</li>
+<li>ParNew和CMS垃圾回收器:ParNew现在一般用在新生代的，CMS是用在老年代的，都是多线程并发的机制，性能更好，一般是生产系统的标配组合。</li>
+<li>G1垃圾回收器:统一收集新生代和老年代，采用了更加优秀的算法和设计机制</li>
+</ul>
+<h3 id="stw"><a href="#stw" class="headerlink" title="stw"></a>stw</h3><p>直接停止Java系统的所有工作线程，让代码不再运行，让垃圾回收线程可以专心致志的进行垃圾回收的工作<br>    - 假设我们的Minor GC要运行100ms，那么可能就会导致系统直接停顿100ms不能处理任何请求<br>    - Full GC是最慢的，有的时候弄不好一次回收要进行几秒钟，甚至几十秒，有的极端场景几分钟都是有可能的。一旦频繁的Full GC，系统每一段时间就卡死个30秒吗?<br>    - 无论是新生代GC还是老年代GC，都尽量不要让频率过高，避免持续时间过长</p>
+<h3 id="ParNew垃圾收集器"><a href="#ParNew垃圾收集器" class="headerlink" title="ParNew垃圾收集器"></a>ParNew垃圾收集器</h3><p>暂停系统程序的工作线程，禁止程序继续运行创建新的对象，用多个垃圾回收线程去进行垃圾回收，用复制算法回收<br>使用ParNew垃圾回收器 JVM参数 -XX:+UseParNewGC<br>ParNew垃圾回收器默认情况下的线程数量 垃圾回收线程的数量就是跟CPU的核数是一样。 JVM参数设置 - XX:ParallelGCThreads=n</p>
+<h3 id="服务器模式与客户端模式"><a href="#服务器模式与客户端模式" class="headerlink" title="服务器模式与客户端模式"></a>服务器模式与客户端模式</h3><ul>
+<li>启动系统的时候是可以区分服务器模式和客户端模式的，启动系统的时候加入“-server”就是服务器模式，如果加入“-cilent”就是客户端模式。</li>
+<li>系统部署在比如4核8G的Linux服务器上那么就应该用服务器模式，如果你的系统是运行在比如Windows上的客户端程序，那么就应该是客户端模式。</li>
+<li>服务器模式通常ParNew来进行垃圾回收，客户端模式使用采用Serial垃圾回收器，单CPU单线程垃圾回收</li>
+</ul>
+<h3 id="CMS"><a href="#CMS" class="headerlink" title="CMS"></a>CMS</h3><p>CMS垃圾回收器采取的是垃圾回收线程和系统工作线程尽量同时执行的模式来处理的，使用标记-清理的算法<br>初始标记 ：stw 很快，仅仅标记出GC Root根<br>并发标记 ：对老年代所有对象进行GC Roots追踪，其实是最耗时的<br>重新标记 ：stw 很快,对在第二阶段中被系统程序运行变动过的少数对象进行标记<br>并发清理 ：很耗时</p>
+<p>缺点：<br>    - 会消耗CPU资源，在并发标记时，老年代存活对象多，追踪大量对象，耗时较高，并发清理，把垃圾对象从随机的内存位置清理掉，也比较耗时，CMS的垃圾回收线程是比较耗费CPU资源的。CMS默认启动的垃圾回收线程的数量是(CPU核数 + 3)/ 4。<br>    - 会产生浮动垃圾，并发清理同时随着系统运行让一些对象进入老年代，这种垃圾需要等到下一次GC才能回收掉</p>
+<p>-XX:CMSInitiatingOccupancyFaction 用来设置老年代占用多少时触发CMS垃圾回收，JDK 1.6里面默认的值是 92%。<br>-XX:+UseCMSCompactAtFullCollection 默认开启 Full GC之后再次进行stw，碎片整理<br>-XX:CMSFullGCsBeforeCompaction 执行多少次Full GC之后执行一次内存碎片整理，默认是0，每次Full GC之后都会进行内存整理。</p>
+<h3 id="优化方案"><a href="#优化方案" class="headerlink" title="优化方案"></a>优化方案</h3><ul>
+<li>评估Eden区进行Minor Gc 之后存活的对象大小，Suvivor区空间够不够，建议的是调整新生代和老年代的大小，让短期存活的对象在新生代就被垃圾回收</li>
+<li>结合系统的运行模型，@Service、@Controller之类的注解那种需要长期存活的核心业务逻辑组件，降低“-XX:MaxTenuringThreshold”参数的值，避免对长期存活的对象在新生代Survivor区来回复制</li>
+<li>大对象直接进入老年代，-XX:PretenureSizeThreshold=1M，避免对象在新生代Survivor区来回复制<br>一般启动参数：</li>
+<li>Xms3072M -Xmx3072M -Xmn2048M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M - XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=5 -XX:PretenureSizeThreshold=1M -XX:+UseParNewGC - XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFaction=92 -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0</li>
+</ul>
+<h3 id="Concurrent-Mode-Failure"><a href="#Concurrent-Mode-Failure" class="headerlink" title="Concurrent Mode Failure"></a>Concurrent Mode Failure</h3><p>CMS在垃圾回收的时候，尤其是并发清理期间，系统程序是可以并发运行的，假设此时老年代空闲空间仅剩100MB，此时系统程序还在不停的创建对象，万一这个时候系统运行触发了某个条件，比如说有200MB对象要进入老年代，这个时候就会触发“Concurrent Mode Failure”问题，因为此时老年代没有足够内存来放这200MB对象，此时就会导致立马进入Stop the World，然后切换CMS为Serial Old收集器来单线程收集垃圾 </p>
+<h3 id="G1-垃圾收集器（针对大内存机器通常建议采用G1垃圾回收器）"><a href="#G1-垃圾收集器（针对大内存机器通常建议采用G1垃圾回收器）" class="headerlink" title="G1 垃圾收集器（针对大内存机器通常建议采用G1垃圾回收器）"></a>G1 垃圾收集器（针对大内存机器通常建议采用G1垃圾回收器）</h3><ul>
+<li>G1垃圾回收器把Java堆内存拆分为多个大小相等的Region，G1会有新生代和老年代的概念，但是只是逻辑上的概念</li>
+<li>G1垃圾回收器可以设置一个垃圾回收的预期停顿时间</li>
+<li>G1通过把内存拆分为大量小Region，以及追踪每个Region中可以回收的对象大小和预估时间，在垃圾回收的时候，尽量把垃圾回收对系统造成的影响控制在指定的时间范围内，同时在有限的时间内尽量回收尽可能多的垃圾对象</li>
+<li>使用“-XX:+UseG1GC”来指定使用G1垃圾回收器，会自动用堆大小除以2048得到每个region的大小，可以使用-XX:G1HeapRegionSize指定region的大小<br>G1中新生代（Eden、Survivor）、老年代的逻辑概念，-XX:G1NewSizePercent来设置新生代初始占比的，随着对象的不停创建，属于新生代的Region会不断增加，Eden和Survivor对应的Region也会不断增加。一旦新生代达到了设定的占据堆内存的最大大小60%，会触发新生代的GC，G1就会用复制算法来进行垃圾回收，进入一个“Stop the World”状态，然后把Eden对应的Region中的存活对象放入S1对应的Region中，接着回收掉Eden对应的Region中的垃圾对象   </li>
+<li>G1是可以设定目标GC停顿时间的，G1执行GC的时候最多可以让系统停顿多长时间，可以通过“-XX:MaxGCPauseMills”参数来设定，默认值是200ms。</li>
+<li>年轻代何时进入老年代？跟之前几乎是一样的<ul>
+<li>对象在新生代gc多次仍然存活 -XX:MaxTenuringThreshold</li>
+<li>年龄为1岁，2岁，3岁，n岁的对象的大小总和超过了Survivor的50%，n+1岁进入老年代</li>
+<li>在G1中，大对象的判定规则：一个大对象超过了一个Region大小的50%，会被放入大对象专门的Region</li>
+</ul>
+</li>
+<li>G1有“-XX:InitiatingHeapOccupancyPercent”，默认值是45%：老年代占据了堆内存的45%的Region的时候，尝试触发一个新生代+老年代一起回收的混合回收阶段。</li>
+<li>G1垃圾收集几个阶段（混合回收可以执行多次）<ul>
+<li>初始标记 stw 标记一下GC Roots直接能引用的对象 很快</li>
+<li>并发标记，允许系统程序的运行，同时进行GC Roots追踪，从GC Roots开始追踪所有的存活，同时记录并发标记系统运行导致哪些对象的改变</li>
+<li>最终标记阶段，stw 对并发标记阶段记录的对象进行标记，最终标记一下有哪些存活对象，有哪些是垃圾对象</li>
+<li>混合回收，从新生代和老年代里都回收一些Region，先停止工作，执行一次混合回收回收掉一些Region，接着恢复系统运行，然后再次停止系统运行，再执行一次混合回收回收掉一些Region。-XX:G1MixedGCCountTarget  混合回收的过程中，最后一个阶段执行几次混合 回收，默认值是8次</li>
+</ul>
+</li>
+</ul>
+<h3 id="G1调优"><a href="#G1调优" class="headerlink" title="G1调优"></a>G1调优</h3><ul>
+<li>-Xms4096M -Xmx4096M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseG1GC</li>
+<li>-XX:G1NewSizePercent参数是用来设置新生代初始占比的，不用设置，维持默认值为5%即可</li>
+<li>-XX:G1MaxNewSizePercent参数是用来设置新生代最大占比的，也不用设置，维持默认值为60%即可</li>
+<li>-XX:MaxGCPauseMills 默认值是200毫秒 垃圾回收时最大停顿时间 </li>
+<li>G1里是很动态灵活的，根据你设定的gc停顿时间给你的新生代不停分配更多Region，到一定程度，就会触发新生代gc，保证新生代gc的时候导致的系统停顿时间在预设范围内。</li>
+<li>新生代的GC优化：合理设置“-XX:MaxGCPauseMills”参数，设置小了，Gc频繁，设置大了，GC停顿时间长</li>
+<li>mixed gc优化：默认老年代占据了堆内存的45%的Region的时候，发生Gc,如果-XX:MaxGCPauseMills设置过大，就会导致新生代GC后更多的对象进入老年代，加速mixed gc 发生</li>
+</ul>
+<h3 id="日处理上亿数据案例"><a href="#日处理上亿数据案例" class="headerlink" title="日处理上亿数据案例"></a>日处理上亿数据案例</h3><ul>
+<li>分布式系统，4核心8G，JVM给了4G，新生代和老年代各1.5G（1.2G Eden区Survivor区150M）,每台机器每分钟计算100条数据，每秒取10000条数据，需要10秒计算完成<ul>
+<li>预估每条数据20个字段，每个字段4B，大约1条数据100B,10000条数据1M，系统运行产生其他对象*10，10M</li>
+<li>每次运行产生10M，一分钟产生1G，大概1分钟就要产生一次年轻代垃圾</li>
+<li>每次年轻代垃圾回收，会有大概17～20次还在计算中，这些数据都是存活的对象，占用空间170M～200M </li>
+<li>每次年轻代垃圾回收，Survivor区无法放入存活的对象，放老年代，在7～9次年轻代垃圾回收后，老年代就满了，触发Fullgc 耗时</li>
+<li>将年轻代分配2G eden1.6G surviro 200m</li>
+</ul>
+</li>
+</ul>
+<h3 id="BI系统案例"><a href="#BI系统案例" class="headerlink" title="BI系统案例"></a>BI系统案例</h3><ul>
+<li>10台机器来部署BI系统，4核8G的配置，堆内存中的新生代分配的内存都在1.5G左右，Eden区大概也就1G左右的空间，几万商家作为你的系统用户，很可能同一时间打开那个实时报表的商家就有几千个，然后每个商家打开实时报表之后，前端页面都会每隔几秒钟发送请求到后台来加载最新数据BI系统部署的每台机器每秒的请求会达到几百个，假设5000个商家同时在线，每秒刷新一次，每秒5000个请求，每台机器分摊500个请求<ul>
+<li>预算每个请求大概需要加载出来10kb的数据进行计算，每秒需要加载出来5MB的数据到内存中进行计算</li>
+<li>200s 就会触发年轻代GC，存活的对象估计几十m</li>
+<li>估计50次年轻代gc 会发生老年代Gc</li>
+</ul>
+</li>
+<li>每秒十万并发，那么就要部署上百台机器来，扩大机器内存，使用G1收集器，采用10台机器</li>
+</ul>
+<h2 id="实战"><a href="#实战" class="headerlink" title="实战"></a>实战</h2><h3 id="打印gc日志"><a href="#打印gc日志" class="headerlink" title="打印gc日志"></a>打印gc日志</h3><ul>
+<li>-XX:+PrintGCDetils:打印详细的gc日志 </li>
+<li>-XX:+PrintGCTimeStamps:这个参数可以打印出来每次GC发生的时间 </li>
+<li>-Xloggc:gc.log:这个参数可以设置将gc日志写入一个磁盘文件</li>
+</ul>
+<h3 id="Jvm-命令"><a href="#Jvm-命令" class="headerlink" title="Jvm 命令"></a>Jvm 命令</h3><ul>
+<li>jps 查看jvm进程ID</li>
+<li>jstat -gc jvm进程ID 查看jvm进程内存使用情况<ul>
+<li>S0C:From Survivor区的大小</li>
+<li>S1C:To Survivor区的大小</li>
+<li>S0U:From Survivor区当前使用的内存大小 </li>
+<li>S1U:To Survivor区当前使用的内存大小 </li>
+<li>EC:Eden区的大小</li>
+<li>EU:Eden区当前使用的内存大小</li>
+<li>OC:老年代的大小</li>
+<li>OU:老年代当前使用的内存大小 </li>
+<li>MC:方法区(永久代、元数据区)的大小 </li>
+<li>MU:方法区(永久代、元数据区)的当前使用的内存大小 </li>
+<li>YGC:Young GC次数 </li>
+<li>YGCT:Young GC的耗时 </li>
+<li>FGC:Full GC次数</li>
+<li>FGCT:Full GC的耗时</li>
+<li>GCT:所有GC的总耗时</li>
+</ul>
+</li>
+<li>jstat -gc jvm进程ID 1000 10  1秒输出一次 输出10次 用于观察环境上内存变化</li>
+<li>jmap -heap jvm进程ID 查看堆内存信息</li>
+<li>jmap -histo:live jvm进程ID 查看内存对象信息</li>
+<li>jmap -dump:live,file=/filename.hprof jvm进程ID  dump出内存信息</li>
+<li>jhat -port 7000 filename.hprof 将dump文件加载出来以网页方式呈现</li>
+</ul>
+<h2 id="调优"><a href="#调优" class="headerlink" title="调优"></a>调优</h2><h3 id="调优方案"><a href="#调优方案" class="headerlink" title="调优方案"></a>调优方案</h3><p>尽量让每次Young GC后的存活对象小于Survivor区域的50%，都留存在年轻代里。<br>尽量别让对象进入老年代。<br>尽量减少Full GC的频率，避免频繁Full GC对JVM性能的影响。</p>
+<h3 id="社交app，QPS-十万"><a href="#社交app，QPS-十万" class="headerlink" title="社交app，QPS 十万"></a>社交app，QPS 十万</h3><ul>
+<li>老年代频繁Gc 压缩碎片，避免每次GC间隔越来越短 -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=5<h3 id="垂直电商app-每小时总会有卡顿"><a href="#垂直电商app-每小时总会有卡顿" class="headerlink" title="垂直电商app 每小时总会有卡顿"></a>垂直电商app 每小时总会有卡顿</h3></li>
+<li>垂直电商APP的各个系统通过jstat分析JVM GC之后发现，基本上高峰期的时候，Full GC每小时都会发生好几次</li>
+<li>通用JVM参数 -Xms4096M -Xmx4096M -Xmn3072M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseParNewGC - XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFaction=92 -XX:+UseCMSCompactAtFullCollection - XX:CMSFullGCsBeforeCompaction=0</li>
+<li>优化fullgc的效率<ul>
+<li>-XX:+CMSParallelInitialMarkEnabled CMS垃圾回收器的“初始标记”阶段开启多线程并发执行</li>
+<li>-XX:+CMSScavengeBeforeRemark 会在CMS的重新标记阶段之前，尽量执行一次Young GC。</li>
+</ul>
+</li>
+</ul>
+<h3 id="频繁的fullgc-观察后发现元空间的满了"><a href="#频繁的fullgc-观察后发现元空间的满了" class="headerlink" title="频繁的fullgc 观察后发现元空间的满了"></a>频繁的fullgc 观察后发现元空间的满了</h3><ul>
+<li>代码里写了大量反射代码，JVM会动态的去生成一些类放入Metaspace区域里的，JVM自己创建的奇怪的类Class对象是SoftReference</li>
+<li>软引用，只有内存不够才会回收，怎么判断要不要回收？clock - timestamp &lt;= freespace * SoftRefLRUPolicyMSPerMB，clock - timestamp代表了一个软引用对象他有多久没被访问过了，freespace代表JVM中的空闲内存空间，SoftRefLRUPolicyMSPerMB代表每一MB空闲内存空间可以允许SoftReference对象存活多久</li>
+<li>SoftRefLRUPolicyMSPerMB 设置为0 导致</li>
+<li>在有大量反射代码的场景下 -XX:SoftRefLRUPolicyMSPerMB=0 可以设置个1000，2000，3000，或者5000毫秒 默认1000</li>
+</ul>
+<h3 id="线上fullgc频繁"><a href="#线上fullgc频繁" class="headerlink" title="线上fullgc频繁"></a>线上fullgc频繁</h3><ul>
+<li>机器配置:2核4G，JVM堆内存大小:2G，系统运行时间:6天，系统运行6天内发生的Full GC次数和耗时:250次，70多秒，系统运行6天内发生的Young GC次数和耗时:2.6万次，1400秒，每天会发生4000多次Young GC，每分钟会发生3次，每次Young GC在50毫秒左右</li>
+<li>未优化前 -Xms1536M -Xmx1536M -Xmn512M -Xss256K -XX:SurvivorRatio=5 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC - XX:CMSInitiatingOccupancyFraction=68 -XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly - XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC</li>
+<li>通过jstat的观察，每次Young GC过后升入老年代里的对象很少 ， 每次Young GC过后大概就存活几十MB而已，那么Survivor区域因为就70MB，所以经常会触发动态年龄判断规则，导致偶尔一次Young GC过后有几十MB对象进入老年代</li>
+<li>大对象 jstat工具观察系统，发现老年代里突然进入了几百MB的大对象,就是特殊场景全表查了数据库，量比较大</li>
+<li>优化方案<ul>
+<li>去除查大数据量的bug</li>
+<li>年轻代变大，避免触发动态年龄判断，部分垃圾对象进入老年代</li>
+<li>-Xms1536M -Xmx1536M -Xmn1024M -Xss256K -XX:SurvivorRatio=5 -XX:PermSize=256M -XX:MaxPermSize=256M - XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFraction=92 - XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:+PrintGCDetails -XX:+PrintGCTimeStamps - XX:+PrintHeapAtGC<h3 id="线上fullgc每秒一次"><a href="#线上fullgc每秒一次" class="headerlink" title="线上fullgc每秒一次"></a>线上fullgc每秒一次</h3></li>
+</ul>
+</li>
+<li>排查是不是代码里使用System.gc()会指挥JVM去尝试执行一次Full GC</li>
+<li>推荐使用参数禁用-XX:+DisableExplicitGC 不允许通过代码触发GC</li>
+</ul>
+<h3 id="mat-内存泄漏分析利器"><a href="#mat-内存泄漏分析利器" class="headerlink" title="mat 内存泄漏分析利器"></a>mat 内存泄漏分析利器</h3><ul>
+<li>频繁Full GC的原因：<ul>
+<li> 内存分配不合理，导致对象频繁进入老年代，进而引发频繁的Full GC; </li>
+<li>存在内存泄漏等问题，就是内存里驻留了大量的对象塞满了老年代，导致稍微有一些对象进入老年代就会引发Full GC; </li>
+<li>永久代里的类太多，触发了Full GC</li>
+</ul>
+</li>
+<li>大促系统 突然卡顿严重<ul>
+<li>线程太多 负载重</li>
+<li>JVM fullgc</li>
+</ul>
+</li>
+<li>jstat 分析得出fullgc频繁 jstat -gc pid 1000 1000</li>
+<li>jmap -dump:live,file=/data.hprof  pid dump文件导入visualvm可视化图形界面分析</li>
+<li>mat工具分析<ul>
+<li><a target="_blank" rel="noopener" href="https://www.eclipse.org/mat/downloads.php">https://www.eclipse.org/mat/downloads.php</a></li>
+<li>MAT上有一个工具栏，Leak Suspects，内存泄漏的分析</li>
+</ul>
+</li>
+</ul>
+<h3 id="处理数据量巨大的系统前端页面卡顿"><a href="#处理数据量巨大的系统前端页面卡顿" class="headerlink" title="处理数据量巨大的系统前端页面卡顿"></a>处理数据量巨大的系统前端页面卡顿</h3><ul>
+<li>jstat -gc pid 1000 1000 发现fullgc 耗时10s</li>
+<li>堆分配了20G的内存，其中10G给了年轻代，10G给了老年代</li>
+<li>Eden区大概1分钟左右就会塞满，young gc 每次都会有几个g进入老年代</li>
+<li>系统运行的时候在产生大量的对象，而且处理的极其的慢</li>
+</ul>
+<h3 id="调优到底该怎么做"><a href="#调优到底该怎么做" class="headerlink" title="调优到底该怎么做"></a>调优到底该怎么做</h3><ul>
+<li>原则:尽可能让每次Young GC后存活对象远远小于Survivor区域，避免对象频繁进入老年代触发Full GC。</li>
+<li>新上线系统进行压测，模拟生产环境压力，用jstat观察jvm内存变化</li>
+<li>频繁gc表现：<ul>
+<li>机器cpu负载过高</li>
+<li>fullgc报警</li>
+<li>无法处理请求或者响应慢</li>
+</ul>
+</li>
+<li>频繁gc的原因<ul>
+<li>一次性加载过多数据进入内存，很多大对象，导致大对象进入老年代  打内存快照 mat分析</li>
+<li>系统高并发导致频繁young gc，每次young gc 存活的对象太多，内存分配不合理，survivor区太小，导致对象进入老年代，频繁触发fullgc jstat观察，然后调大survivor区，调大年轻代</li>
+<li>永久代因为加载类过多触发fullgc  打内存快照 mat分析</li>
+<li>调用System.gc()  代码优化</li>
+<li>内存泄漏，无法被回收   代码优化</li>
+</ul>
+</li>
+</ul>
+<h3 id="应该如何在面试中回答JVM生产优化问题"><a href="#应该如何在面试中回答JVM生产优化问题" class="headerlink" title="应该如何在面试中回答JVM生产优化问题?"></a>应该如何在面试中回答JVM生产优化问题?</h3><ul>
+<li><p>归纳总结出来一套通用的方法付论</p>
+<ul>
+<li><p>堆内存大小设置 </p>
+<ul>
+<li>-Xms3G -Xmx3G  最大最小堆设置相同，避免内存伸缩时造成gc导致卡顿</li>
+<li>-Xmn2G 设置新生代的大小 -XX:SurvivorRatio=8设置eden与survivor区比例</li>
+</ul>
+</li>
+<li><p>元空间</p>
+<ul>
+<li>-XX:MetaspaceSize=512m</li>
+<li>-XX:MaxMetaspaceSize=512m</li>
+</ul>
+</li>
+<li><p>gc日志</p>
+<ul>
+<li> -XX:+PrintGCDetails -XX:+PrintGCTimeStamps  -Xloggc:/gc.log</li>
+</ul>
+</li>
+<li><p>栈大小</p>
+<ul>
+<li>-Xss1M</li>
+</ul>
+</li>
+<li><p>垃圾收集器设置</p>
+<ul>
+<li>-XX:+UseParNewGC</li>
+<li>-XX:+UseConcMarkSweepGC</li>
+<li>-XX:+UseG1GC</li>
+</ul>
+</li>
+<li><p>垃圾收集器相关参数设置</p>
+<ul>
+<li>-XX:CMSInitiatingOccupancyFaction=92 cms老年代内存大小发生fullgc,可以设置稍微小，降低发生fullgc的时间</li>
+<li>-XX:+UseCMSCompactAtFullCollection - XX:CMSFullGCsBeforeCompaction=0 压缩碎片，每次都压缩吗</li>
+<li>-XX:+CMSParallelInitialMarkEnabled CMS垃圾回收器的“初始标记”阶段开启多线程并发执行</li>
+<li>-XX:+CMSScavengeBeforeRemark 会在CMS的重新标记阶段之前，尽量执行一次Young GC</li>
+<li>-XX:+UseCMSInitiatingOccupancyOnly 只使用指定的值，避免伸缩</li>
+</ul>
+</li>
+<li><p>oom的参数设置</p>
+<ul>
+<li>-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/usr/local/app/oom</li>
+</ul>
+</li>
+<li><p>预防System.gc()</p>
+<ul>
+<li>-XX:+DisableExplicitGC 不容许代码控制gc</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>负责的系统，假设数据量和访问量暴增10倍，或者100倍，此时会不会出现频繁Full GC的 问题?如果会的话，那么一旦发生了，如何定位、分析和解决?</p>
+<ul>
+<li>负责的系统主要的业务借款，用户量大概有2000万，日活500万，集中在下午4～6点会进行借款</li>
+<li>目前生产机器4核8G配置给jvm4G</li>
+<li>借款的接口并发 每秒进入借款页面5000，借款相关接口并发10000 </li>
+<li>核心接口 产生新对象平均20 字段数平均20个  4<em>20B</em>20=2k 扩大10倍～20倍 20k</li>
+<li>部署8台机器 接口并发1000接口/s 一秒产生20m对象  平均80s就会young gc一次 </li>
+</ul>
+</li>
+<li><p>说自己的系统可能在哪些情况下发生频繁Full GC，在压测的时候就发现了这 些问题，然后你是如何进行JVM性能优化的!</p>
+</li>
+</ul>
+<h3 id="oom"><a href="#oom" class="headerlink" title="oom"></a>oom</h3><ul>
+<li>元空间<ul>
+<li>-XX:MetaspaceSize=512m -XX:MaxMetaspaceSize=512m</li>
+<li>元空间gc的条件：类的类加载器先要被回收，类的所有对象实例都要被回收</li>
+<li>在上线系统的时候对Metaspace区域直接用默认的参数,默认的太小</li>
+<li>用cglib之类的技术动态生成一些类，一旦代码中没有控制好，导致生成的类过多，导致元空间满，从而引发oom</li>
+</ul>
+</li>
+<li>栈内存<ul>
+<li>递归调用</li>
+</ul>
+</li>
+<li>堆内存<ul>
+<li>高并发场景，导致ygc后很多请求还没处理完毕，存活对象太多，可能就在Survivor区域放不下了，只能进入到老年代，老年代很快就会放满。又有一批对象生成后younggc后仍有大量存活对象，需要放到老年代，此时老年代满了，就要触发fullgc,fullgc之后仍然放不下对象就会oom</li>
+</ul>
+</li>
+</ul>
+<h3 id="大型计算系统oom了"><a href="#大型计算系统oom了" class="headerlink" title="大型计算系统oom了"></a>大型计算系统oom了</h3><ul>
+<li>从数据存储系统读出并计算，计算完成推送Kafka</li>
+<li>发送Kafka失败就要重试</li>
+<li>假设Kafka宕机，系统计算结果越来越多，最终oom</li>
+<li>解决方案，当Kafka宕机时，写本地存储</li>
+</ul>
+<h3 id="oom监控方案"><a href="#oom监控方案" class="headerlink" title="oom监控方案"></a>oom监控方案</h3><ul>
+<li>主动监控：监控系统，监控cpu,内存，监控fullgc次数</li>
+<li>被动监控：<ul>
+<li>系统宕机，通知</li>
+<li>每天观察系统日志<h3 id="系统宕机时dump"><a href="#系统宕机时dump" class="headerlink" title="系统宕机时dump"></a>系统宕机时dump</h3></li>
+</ul>
+</li>
+<li>XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/usr/local/app/oom</li>
+</ul>
+<h3 id="netty-nio-堆外内存溢出"><a href="#netty-nio-堆外内存溢出" class="headerlink" title="netty nio 堆外内存溢出"></a>netty nio 堆外内存溢出</h3><p>当堆外内存都被大量的DirectByteBuffer对象关联使用了，再要使用更多的堆外内存，那么就会报内存溢出了<br>系统承载的是超高并发，复杂压力很高，瞬时大量请求过来，创建了过多的DirectByteBuffer占用了大量的堆外内存，此时再继续想要使用堆外内存，就会内存溢出</p>
+<h3 id="rpc-oom"><a href="#rpc-oom" class="headerlink" title="rpc oom"></a>rpc oom</h3><p>rpc传输需要将对象序列化成字节，比如服务A的Request类有15个字段，序列化成字节流给你发送过来了，服务B的Request类只有10个字段，有的字段名字还不一 样，那么反序列化的时候就会失败，代码中写的逻辑是，一旦反序列化失败了，此时就会开辟一个byte[]数组，默认大小是4GB，然后把对方的字节流原封不动的放进 去。<br>垃圾处理逻辑，序列化失败应该返回错误的响应码</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="reward-container">
+  <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+  <button>
+    赞赏
+  </button>
+  <div class="post-reward">
+      <div>
+        <img src="/images/wechatpay.jpg" alt="Ren zheng xiao 微信">
+        <span>微信</span>
+      </div>
+      <div>
+        <img src="/images/alipay.jpg" alt="Ren zheng xiao 支付宝">
+        <span>支付宝</span>
+      </div>
+
+  </div>
+</div>
+
+          <div class="post-tags">
+              <a href="/tags/JAVA%E8%99%9A%E6%8B%9F%E6%9C%BA/" rel="tag"># JAVA虚拟机</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/02/28/%E5%AD%A6MQ%E6%89%80%E5%BE%97/" rel="prev" title="学MQ所得">
+                  <i class="fa fa-chevron-left"></i> 学MQ所得
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2022/03/31/redis/" rel="next" title="redis">
+                  redis <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="beian"><a href="https://beian.miit.gov.cn/" rel="noopener" target="_blank">苏ICP备14022081号-4 </a>
+  </div>
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ren zheng xiao</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/mist/" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"blog.imder.top","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.8.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
+<meta name="description" content="ExceptionHandler和ControllerAdvice注解分析DispatcherServlet如何加载HandlerExceptionResolver？12345678910111213141516171819202122232425262728293031323334private void initHandlerExceptionResolvers(ApplicationCont">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ExceptionHandler和ControllerAdvice注解分析">
+<meta property="og:url" content="https://blog.imder.top/2022/02/21/ExceptionHandler%E5%92%8CControllerAdvice%E6%B3%A8%E8%A7%A3%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="随记">
+<meta property="og:description" content="ExceptionHandler和ControllerAdvice注解分析DispatcherServlet如何加载HandlerExceptionResolver？12345678910111213141516171819202122232425262728293031323334private void initHandlerExceptionResolvers(ApplicationCont">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-02-21T18:59:29.000Z">
+<meta property="article:modified_time" content="2024-03-28T16:43:20.063Z">
+<meta property="article:author" content="Ren zheng xiao">
+<meta property="article:tag" content="JAVA">
+<meta property="article:tag" content="Spring">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://blog.imder.top/2022/02/21/ExceptionHandler%E5%92%8CControllerAdvice%E6%B3%A8%E8%A7%A3%E5%88%86%E6%9E%90/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://blog.imder.top/2022/02/21/ExceptionHandler%E5%92%8CControllerAdvice%E6%B3%A8%E8%A7%A3%E5%88%86%E6%9E%90/","path":"2022/02/21/ExceptionHandler和ControllerAdvice注解分析/","title":"ExceptionHandler和ControllerAdvice注解分析"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>ExceptionHandler和ControllerAdvice注解分析 | 随记</title>
+  
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+  <canvas class="fireworks" style="position: fixed;left: 0;top: 0;z-index: 1; pointer-events: none;" ></canvas>
+   <script type="text/javascript" src="//cdn.bootcss.com/animejs/2.2.0/anime.min.js"></script>
+   <script type="text/javascript" src="/js/fireworks.js"></script>
+<link rel="alternate" href="/atom.xml" title="随记" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">随记</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">记一记,所学,温故而知新</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li>
+        <li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li>
+        <li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li>
+        <li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ExceptionHandler%E5%92%8CControllerAdvice%E6%B3%A8%E8%A7%A3%E5%88%86%E6%9E%90"><span class="nav-number">1.</span> <span class="nav-text">ExceptionHandler和ControllerAdvice注解分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#DispatcherServlet%E5%A6%82%E4%BD%95%E5%8A%A0%E8%BD%BDHandlerExceptionResolver%EF%BC%9F"><span class="nav-number">1.1.</span> <span class="nav-text">DispatcherServlet如何加载HandlerExceptionResolver？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DispatcherServlet-properties%E9%87%8C%E7%9A%84HandlerExceptionResolver%E9%85%8D%E7%BD%AE"><span class="nav-number">1.2.</span> <span class="nav-text">DispatcherServlet.properties里的HandlerExceptionResolver配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%95%E6%97%B6%E5%8A%A0%E8%BD%BD-ControllerAdvice%E6%B3%A8%E8%A7%A3%E7%9A%84bean%E3%80%81-ExceptionHandler%E6%B3%A8%E8%A7%A3%E7%9A%84%E6%96%B9%E6%B3%95"><span class="nav-number">1.3.</span> <span class="nav-text">何时加载@ControllerAdvice注解的bean、@ExceptionHandler注解的方法?</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%95%E6%97%B6%E8%B0%83%E7%94%A8%E5%88%B0ExceptionHandlerExceptionResolver"><span class="nav-number">1.4.</span> <span class="nav-text">何时调用到ExceptionHandlerExceptionResolver?</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B0%83%E7%94%A8ExceptionHandlerExceptionResolver%E7%9A%84resolveException%E6%96%B9%E6%B3%95%E5%A6%82%E4%BD%95%E5%A4%84%E7%90%86%E5%BC%82%E5%B8%B8"><span class="nav-number">1.5.</span> <span class="nav-text">调用ExceptionHandlerExceptionResolver的resolveException方法如何处理异常</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Ren zheng xiao"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Ren zheng xiao</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.imder.top/2022/02/21/ExceptionHandler%E5%92%8CControllerAdvice%E6%B3%A8%E8%A7%A3%E5%88%86%E6%9E%90/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Ren zheng xiao">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="随记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ExceptionHandler和ControllerAdvice注解分析
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2022-02-21 18:59:29" itemprop="dateCreated datePublished" datetime="2022-02-21T18:59:29+00:00">2022-02-21</time>
+    </span>
+      <span class="post-meta-item">
+        <span class="post-meta-item-icon">
+          <i class="far fa-calendar-check"></i>
+        </span>
+        <span class="post-meta-item-text">更新于</span>
+        <time title="修改时间：2024-03-28 16:43:20" itemprop="dateModified" datetime="2024-03-28T16:43:20+00:00">2024-03-28</time>
+      </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/JAVA/" itemprop="url" rel="index"><span itemprop="name">JAVA</span></a>
+        </span>
+          ，
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/JAVA/Spring/" itemprop="url" rel="index"><span itemprop="name">Spring</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h1 id="ExceptionHandler和ControllerAdvice注解分析"><a href="#ExceptionHandler和ControllerAdvice注解分析" class="headerlink" title="ExceptionHandler和ControllerAdvice注解分析"></a>ExceptionHandler和ControllerAdvice注解分析</h1><h2 id="DispatcherServlet如何加载HandlerExceptionResolver？"><a href="#DispatcherServlet如何加载HandlerExceptionResolver？" class="headerlink" title="DispatcherServlet如何加载HandlerExceptionResolver？"></a>DispatcherServlet如何加载HandlerExceptionResolver？</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">private void initHandlerExceptionResolvers(ApplicationContext context) &#123;</span><br><span class="line">		this.handlerExceptionResolvers = null;</span><br><span class="line"></span><br><span class="line">		if (this.detectAllHandlerExceptionResolvers) &#123; //默认为true</span><br><span class="line">			// Find all HandlerExceptionResolvers in the ApplicationContext, including ancestor contexts.</span><br><span class="line">			Map&lt;String, HandlerExceptionResolver&gt; matchingBeans = BeanFactoryUtils</span><br><span class="line">					.beansOfTypeIncludingAncestors(context, HandlerExceptionResolver.class, true, false);</span><br><span class="line">			if (!matchingBeans.isEmpty()) &#123;</span><br><span class="line">				this.handlerExceptionResolvers = new ArrayList&lt;&gt;(matchingBeans.values());</span><br><span class="line">				// We keep HandlerExceptionResolvers in sorted order.</span><br><span class="line">				AnnotationAwareOrderComparator.sort(this.handlerExceptionResolvers);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			try &#123;</span><br><span class="line">				HandlerExceptionResolver her =</span><br><span class="line">						context.getBean(HANDLER_EXCEPTION_RESOLVER_BEAN_NAME, HandlerExceptionResolver.class);</span><br><span class="line">				this.handlerExceptionResolvers = Collections.singletonList(her);</span><br><span class="line">			&#125;</span><br><span class="line">			catch (NoSuchBeanDefinitionException ex) &#123;</span><br><span class="line">				// Ignore, no HandlerExceptionResolver is fine too.</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		// Ensure we have at least some HandlerExceptionResolvers, by registering</span><br><span class="line">		// default HandlerExceptionResolvers if no other resolvers are found.</span><br><span class="line">		if (this.handlerExceptionResolvers == null) &#123;</span><br><span class="line">			this.handlerExceptionResolvers = getDefaultStrategies(context, HandlerExceptionResolver.class); //从默认的DispatcherServlet.properties取</span><br><span class="line">			if (logger.isTraceEnabled()) &#123;</span><br><span class="line">				logger.trace(&quot;No HandlerExceptionResolvers declared in servlet &#x27;&quot; + getServletName() +</span><br><span class="line">						&quot;&#x27;: using default strategies from DispatcherServlet.properties&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="DispatcherServlet-properties里的HandlerExceptionResolver配置"><a href="#DispatcherServlet-properties里的HandlerExceptionResolver配置" class="headerlink" title="DispatcherServlet.properties里的HandlerExceptionResolver配置"></a>DispatcherServlet.properties里的HandlerExceptionResolver配置</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">org.springframework.web.servlet.HandlerExceptionResolver=org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver,\</span><br><span class="line">	org.springframework.web.servlet.mvc.annotation.ResponseStatusExceptionResolver,\</span><br><span class="line">	org.springframework.web.servlet.mvc.support.DefaultHandlerExceptionResolver</span><br></pre></td></tr></table></figure>
+
+<h2 id="何时加载-ControllerAdvice注解的bean、-ExceptionHandler注解的方法"><a href="#何时加载-ControllerAdvice注解的bean、-ExceptionHandler注解的方法" class="headerlink" title="何时加载@ControllerAdvice注解的bean、@ExceptionHandler注解的方法?"></a>何时加载@ControllerAdvice注解的bean、@ExceptionHandler注解的方法?</h2><ul>
+<li>ExceptionHandlerExceptionResolver实现InitializingBean接口，在afterPropertiesSet方法里调用initExceptionHandlerAdviceCache()方法</li>
+<li>在initExceptionHandlerAdviceCache()方法里对@ControllerAdvice注解的bean、@ExceptionHandler注解的方法进行处理</li>
+<li>找出所有带有@ControllerAdvice注解的bean，用ExceptionHandlerMethodResolver类判断bean上是否有@ExceptionHandler，有加入exceptionHandlerAdviceCache里</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">private void initExceptionHandlerAdviceCache() &#123;</span><br><span class="line">		if (getApplicationContext() == null) &#123;</span><br><span class="line">			return;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		List&lt;ControllerAdviceBean&gt; adviceBeans = ControllerAdviceBean.findAnnotatedBeans(getApplicationContext()); //找出所有带有@ControllerAdvice注解的bean</span><br><span class="line">		for (ControllerAdviceBean adviceBean : adviceBeans) &#123;</span><br><span class="line">			Class&lt;?&gt; beanType = adviceBean.getBeanType();</span><br><span class="line">			if (beanType == null) &#123;</span><br><span class="line">				throw new IllegalStateException(&quot;Unresolvable type for ControllerAdviceBean: &quot; + adviceBean);</span><br><span class="line">			&#125;</span><br><span class="line">			ExceptionHandlerMethodResolver resolver = new ExceptionHandlerMethodResolver(beanType);</span><br><span class="line">			if (resolver.hasExceptionMappings()) &#123;</span><br><span class="line">				this.exceptionHandlerAdviceCache.put(adviceBean, resolver);</span><br><span class="line">			&#125;</span><br><span class="line">			if (ResponseBodyAdvice.class.isAssignableFrom(beanType)) &#123;</span><br><span class="line">				this.responseBodyAdvice.add(adviceBean);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		if (logger.isDebugEnabled()) &#123;</span><br><span class="line">			int handlerSize = this.exceptionHandlerAdviceCache.size();</span><br><span class="line">			int adviceSize = this.responseBodyAdvice.size();</span><br><span class="line">			if (handlerSize == 0 &amp;&amp; adviceSize == 0) &#123;</span><br><span class="line">				logger.debug(&quot;ControllerAdvice beans: none&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">			else &#123;</span><br><span class="line">				logger.debug(&quot;ControllerAdvice beans: &quot; +</span><br><span class="line">						handlerSize + &quot; @ExceptionHandler, &quot; + adviceSize + &quot; ResponseBodyAdvice&quot;);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>将@ControllerAdvice注解的bean解析方法上ExceptionHandler注解并放入mappedMethods中</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">public static final MethodFilter EXCEPTION_HANDLER_METHODS = method -&gt;</span><br><span class="line">			AnnotatedElementUtils.hasAnnotation(method, ExceptionHandler.class);</span><br><span class="line">			</span><br><span class="line">public ExceptionHandlerMethodResolver(Class&lt;?&gt; handlerType) &#123;</span><br><span class="line">		for (Method method : MethodIntrospector.selectMethods(handlerType, EXCEPTION_HANDLER_METHODS)) &#123;</span><br><span class="line">			for (Class&lt;? extends Throwable&gt; exceptionType : detectExceptionMappings(method)) &#123;</span><br><span class="line">				addExceptionMapping(exceptionType, method);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">private void addExceptionMapping(Class&lt;? extends Throwable&gt; exceptionType, Method method) &#123;</span><br><span class="line">		Method oldMethod = this.mappedMethods.put(exceptionType, method);</span><br><span class="line">		if (oldMethod != null &amp;&amp; !oldMethod.equals(method)) &#123;</span><br><span class="line">			throw new IllegalStateException(&quot;Ambiguous @ExceptionHandler method mapped for [&quot; +</span><br><span class="line">					exceptionType + &quot;]: &#123;&quot; + oldMethod + &quot;, &quot; + method + &quot;&#125;&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">public boolean hasExceptionMappings() &#123;</span><br><span class="line">	return !this.mappedMethods.isEmpty();</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="何时调用到ExceptionHandlerExceptionResolver"><a href="#何时调用到ExceptionHandlerExceptionResolver" class="headerlink" title="何时调用到ExceptionHandlerExceptionResolver?"></a>何时调用到ExceptionHandlerExceptionResolver?</h2><p>– 在DispatcherServlet的doDispatch方法中try-catch的catch代码中调用processDispatchResult方法(),这个方法中调用了processHandlerException方法</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line">protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception &#123;</span><br><span class="line">		HttpServletRequest processedRequest = request;</span><br><span class="line">		HandlerExecutionChain mappedHandler = null;</span><br><span class="line">		boolean multipartRequestParsed = false;</span><br><span class="line"></span><br><span class="line">		WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);</span><br><span class="line"></span><br><span class="line">		try &#123;</span><br><span class="line">			ModelAndView mv = null;</span><br><span class="line">			Exception dispatchException = null;</span><br><span class="line">			....省略</span><br><span class="line">			catch (Exception ex) &#123;</span><br><span class="line">				dispatchException = ex;</span><br><span class="line">			&#125;</span><br><span class="line">			catch (Throwable err) &#123;</span><br><span class="line">				// As of 4.3, we&#x27;re processing Errors thrown from handler methods as well,</span><br><span class="line">				// making them available for @ExceptionHandler methods and other scenarios.</span><br><span class="line">				dispatchException = new NestedServletException(&quot;Handler dispatch failed&quot;, err);</span><br><span class="line">			&#125;</span><br><span class="line">			processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);</span><br><span class="line">		&#125;</span><br><span class="line">		...</span><br><span class="line">&#125;</span><br><span class="line">private void processDispatchResult(HttpServletRequest request, HttpServletResponse response,</span><br><span class="line">			@Nullable HandlerExecutionChain mappedHandler, @Nullable ModelAndView mv,</span><br><span class="line">			@Nullable Exception exception) throws Exception &#123;</span><br><span class="line"></span><br><span class="line">		boolean errorView = false;</span><br><span class="line"></span><br><span class="line">		if (exception != null) &#123;</span><br><span class="line">			if (exception instanceof ModelAndViewDefiningException) &#123;</span><br><span class="line">				logger.debug(&quot;ModelAndViewDefiningException encountered&quot;, exception);</span><br><span class="line">				mv = ((ModelAndViewDefiningException) exception).getModelAndView();</span><br><span class="line">			&#125;</span><br><span class="line">			else &#123;</span><br><span class="line">				Object handler = (mappedHandler != null ? mappedHandler.getHandler() : null);</span><br><span class="line">				mv = processHandlerException(request, response, handler, exception);</span><br><span class="line">				errorView = (mv != null);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		....省略</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">protected ModelAndView processHandlerException(HttpServletRequest request, HttpServletResponse response,</span><br><span class="line">			@Nullable Object handler, Exception ex) throws Exception &#123;</span><br><span class="line"></span><br><span class="line">		// Success and error responses may use different content types</span><br><span class="line">		request.removeAttribute(HandlerMapping.PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE);</span><br><span class="line"></span><br><span class="line">		// Check registered HandlerExceptionResolvers...</span><br><span class="line">		ModelAndView exMv = null;</span><br><span class="line">		//遍历所有的handlerExceptionResolvers，能resolveException返回不空为空跳出循环</span><br><span class="line">		if (this.handlerExceptionResolvers != null) &#123;</span><br><span class="line">			for (HandlerExceptionResolver resolver : this.handlerExceptionResolvers) &#123;</span><br><span class="line">				exMv = resolver.resolveException(request, response, handler, ex);//此处调用ExceptionHandlerExceptionResolver的resolveException方法</span><br><span class="line">				if (exMv != null) &#123;</span><br><span class="line">					break;</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		....省略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="调用ExceptionHandlerExceptionResolver的resolveException方法如何处理异常"><a href="#调用ExceptionHandlerExceptionResolver的resolveException方法如何处理异常" class="headerlink" title="调用ExceptionHandlerExceptionResolver的resolveException方法如何处理异常"></a>调用ExceptionHandlerExceptionResolver的resolveException方法如何处理异常</h2><ul>
+<li>resolveException方法会调用doResolveHandlerMethodException方法</li>
+<li>在doResolveHandlerMethodException方法里<ul>
+<li>调用getExceptionHandlerMethod方法里<ul>
+<li>从当前controller类找ExceptionHandler注解的方法，若找到并匹配异常类型返回ServletInvocableHandlerMethod</li>
+<li>从exceptionHandlerAdviceCache 里面找到方法并匹配异常类型返回ServletInvocableHandlerMethod</li>
+</ul>
+</li>
+<li>对返回的getExceptionHandlerMethod方法返回值进行判断<ul>
+<li>不为空 exceptionHandlerMethod.invokeAndHandle(webRequest, mavContainer, arguments);</li>
+<li>为空 return null</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br></pre></td><td class="code"><pre><span class="line">protected ModelAndView doResolveHandlerMethodException(HttpServletRequest request,</span><br><span class="line">			HttpServletResponse response, @Nullable HandlerMethod handlerMethod, Exception exception) &#123;</span><br><span class="line"></span><br><span class="line">		ServletInvocableHandlerMethod exceptionHandlerMethod = getExceptionHandlerMethod(handlerMethod, exception);</span><br><span class="line">		if (exceptionHandlerMethod == null) &#123;</span><br><span class="line">			return null;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		...省略</span><br><span class="line">		ServletWebRequest webRequest = new ServletWebRequest(request, response);</span><br><span class="line">		ModelAndViewContainer mavContainer = new ModelAndViewContainer();</span><br><span class="line"></span><br><span class="line">		ArrayList&lt;Throwable&gt; exceptions = new ArrayList&lt;&gt;();</span><br><span class="line">		try &#123;</span><br><span class="line">			...省略</span><br><span class="line">			exceptionHandlerMethod.invokeAndHandle(webRequest, mavContainer, arguments);</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Throwable invocationEx) &#123;</span><br><span class="line">			// Any other than the original exception (or a cause) is unintended here,</span><br><span class="line">			// probably an accident (e.g. failed assertion or the like).</span><br><span class="line">			if (!exceptions.contains(invocationEx) &amp;&amp; logger.isWarnEnabled()) &#123;</span><br><span class="line">				logger.warn(&quot;Failure in @ExceptionHandler &quot; + exceptionHandlerMethod, invocationEx);</span><br><span class="line">			&#125;</span><br><span class="line">			// Continue with default processing of the original exception...</span><br><span class="line">			return null;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		if (mavContainer.isRequestHandled()) &#123;</span><br><span class="line">			return new ModelAndView();</span><br><span class="line">		&#125;</span><br><span class="line">		else &#123;</span><br><span class="line">			ModelMap model = mavContainer.getModel();</span><br><span class="line">			HttpStatus status = mavContainer.getStatus();</span><br><span class="line">			ModelAndView mav = new ModelAndView(mavContainer.getViewName(), model, status);</span><br><span class="line">			mav.setViewName(mavContainer.getViewName());</span><br><span class="line">			if (!mavContainer.isViewReference()) &#123;</span><br><span class="line">				mav.setView((View) mavContainer.getView());</span><br><span class="line">			&#125;</span><br><span class="line">			if (model instanceof RedirectAttributes) &#123;</span><br><span class="line">				Map&lt;String, ?&gt; flashAttributes = ((RedirectAttributes) model).getFlashAttributes();</span><br><span class="line">				RequestContextUtils.getOutputFlashMap(request).putAll(flashAttributes);</span><br><span class="line">			&#125;</span><br><span class="line">			return mav;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	</span><br><span class="line">	protected ServletInvocableHandlerMethod getExceptionHandlerMethod(</span><br><span class="line">			@Nullable HandlerMethod handlerMethod, Exception exception) &#123;</span><br><span class="line"></span><br><span class="line">		Class&lt;?&gt; handlerType = null;</span><br><span class="line"></span><br><span class="line">		if (handlerMethod != null) &#123;</span><br><span class="line">			// Local exception handler methods on the controller class itself.</span><br><span class="line">			// To be invoked through the proxy, even in case of an interface-based proxy.</span><br><span class="line">			handlerType = handlerMethod.getBeanType();</span><br><span class="line">			ExceptionHandlerMethodResolver resolver = this.exceptionHandlerCache.get(handlerType);</span><br><span class="line">			if (resolver == null) &#123;</span><br><span class="line">				resolver = new ExceptionHandlerMethodResolver(handlerType);</span><br><span class="line">				this.exceptionHandlerCache.put(handlerType, resolver);</span><br><span class="line">			&#125;</span><br><span class="line">			Method method = resolver.resolveMethod(exception);//从当前controller类找ExceptionHandler注解的方法</span><br><span class="line">			if (method != null) &#123;</span><br><span class="line">				return new ServletInvocableHandlerMethod(handlerMethod.getBean(), method, this.applicationContext);</span><br><span class="line">			&#125;</span><br><span class="line">			// For advice applicability check below (involving base packages, assignable types</span><br><span class="line">			// and annotation presence), use target class instead of interface-based proxy.</span><br><span class="line">			if (Proxy.isProxyClass(handlerType)) &#123;</span><br><span class="line">				handlerType = AopUtils.getTargetClass(handlerMethod.getBean());</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		for (Map.Entry&lt;ControllerAdviceBean, ExceptionHandlerMethodResolver&gt; entry : this.exceptionHandlerAdviceCache.entrySet()) &#123;</span><br><span class="line">			ControllerAdviceBean advice = entry.getKey();</span><br><span class="line">			if (advice.isApplicableToBeanType(handlerType)) &#123;</span><br><span class="line">				ExceptionHandlerMethodResolver resolver = entry.getValue();</span><br><span class="line">				Method method = resolver.resolveMethod(exception);//从exceptionHandlerAdviceCache 里面找到并匹配异常类型</span><br><span class="line">				if (method != null) &#123;</span><br><span class="line">					return new ServletInvocableHandlerMethod(advice.resolveBean(), method, this.applicationContext);</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		return null;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	public void invokeAndHandle(ServletWebRequest webRequest, ModelAndViewContainer mavContainer,</span><br><span class="line">			Object... providedArgs) throws Exception &#123;</span><br><span class="line"></span><br><span class="line">		Object returnValue = invokeForRequest(webRequest, mavContainer, providedArgs);</span><br><span class="line">		setResponseStatus(webRequest);</span><br><span class="line"></span><br><span class="line">		if (returnValue == null) &#123;</span><br><span class="line">			if (isRequestNotModified(webRequest) || getResponseStatus() != null || mavContainer.isRequestHandled()) &#123;</span><br><span class="line">				disableContentCachingIfNecessary(webRequest);</span><br><span class="line">				mavContainer.setRequestHandled(true);</span><br><span class="line">				return;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		else if (StringUtils.hasText(getResponseStatusReason())) &#123;</span><br><span class="line">			mavContainer.setRequestHandled(true);</span><br><span class="line">			return;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		mavContainer.setRequestHandled(false);</span><br><span class="line">		Assert.state(this.returnValueHandlers != null, &quot;No return value handlers&quot;);</span><br><span class="line">		try &#123;</span><br><span class="line">			this.returnValueHandlers.handleReturnValue(</span><br><span class="line">					returnValue, getReturnValueType(returnValue), mavContainer, webRequest);</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Exception ex) &#123;</span><br><span class="line">			if (logger.isTraceEnabled()) &#123;</span><br><span class="line">				logger.trace(formatErrorForReturnValue(returnValue), ex);</span><br><span class="line">			&#125;</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="reward-container">
+  <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+  <button>
+    赞赏
+  </button>
+  <div class="post-reward">
+      <div>
+        <img src="/images/wechatpay.jpg" alt="Ren zheng xiao 微信">
+        <span>微信</span>
+      </div>
+      <div>
+        <img src="/images/alipay.jpg" alt="Ren zheng xiao 支付宝">
+        <span>支付宝</span>
+      </div>
+
+  </div>
+</div>
+
+          <div class="post-tags">
+              <a href="/tags/JAVA/" rel="tag"># JAVA</a>
+              <a href="/tags/Spring/" rel="tag"># Spring</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/02/21/%E6%8B%A6%E6%88%AA%E5%99%A8%E9%93%BE%E5%BC%8F%E8%B0%83%E7%94%A8/" rel="prev" title="拦截器链式调用">
+                  <i class="fa fa-chevron-left"></i> 拦截器链式调用
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2022/02/21/@ControllerAdvice%E4%B8%8E@ModelAttribute%E3%80%81@InitBinder%E6%B3%A8%E8%A7%A3%E6%B7%B7%E5%90%88%E4%BD%BF%E7%94%A8/" rel="next" title="ExceptionHandler和ControllerAdvice注解分析">
+                  ExceptionHandler和ControllerAdvice注解分析 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="beian"><a href="https://beian.miit.gov.cn/" rel="noopener" target="_blank">苏ICP备14022081号-4 </a>
+  </div>
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ren zheng xiao</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/mist/" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

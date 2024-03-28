@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"blog.imder.top","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.8.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
+<meta name="description" content="@ControllerAdvice与@ModelAttribute、@InitBinder注解混合使用@ModelAttribute注解的作用 用在方法的参数上 注解在参数上，会将客户端传递过来的参数按名称注入到指定对象中， 并且会将这个对象自动加入ModelMap中   用在Controller的方法上 注解在方法上，会在每一个@RequestMapping标注的方法前执行， 如果有返回值，则自">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ExceptionHandler和ControllerAdvice注解分析">
+<meta property="og:url" content="https://blog.imder.top/2022/02/21/@ControllerAdvice%E4%B8%8E@ModelAttribute%E3%80%81@InitBinder%E6%B3%A8%E8%A7%A3%E6%B7%B7%E5%90%88%E4%BD%BF%E7%94%A8/index.html">
+<meta property="og:site_name" content="随记">
+<meta property="og:description" content="@ControllerAdvice与@ModelAttribute、@InitBinder注解混合使用@ModelAttribute注解的作用 用在方法的参数上 注解在参数上，会将客户端传递过来的参数按名称注入到指定对象中， 并且会将这个对象自动加入ModelMap中   用在Controller的方法上 注解在方法上，会在每一个@RequestMapping标注的方法前执行， 如果有返回值，则自">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-02-21T19:59:29.000Z">
+<meta property="article:modified_time" content="2024-03-28T16:43:20.059Z">
+<meta property="article:author" content="Ren zheng xiao">
+<meta property="article:tag" content="JAVA">
+<meta property="article:tag" content="Spring">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://blog.imder.top/2022/02/21/@ControllerAdvice%E4%B8%8E@ModelAttribute%E3%80%81@InitBinder%E6%B3%A8%E8%A7%A3%E6%B7%B7%E5%90%88%E4%BD%BF%E7%94%A8/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://blog.imder.top/2022/02/21/@ControllerAdvice%E4%B8%8E@ModelAttribute%E3%80%81@InitBinder%E6%B3%A8%E8%A7%A3%E6%B7%B7%E5%90%88%E4%BD%BF%E7%94%A8/","path":"2022/02/21/@ControllerAdvice与@ModelAttribute、@InitBinder注解混合使用/","title":"ExceptionHandler和ControllerAdvice注解分析"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>ExceptionHandler和ControllerAdvice注解分析 | 随记</title>
+  
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+  <canvas class="fireworks" style="position: fixed;left: 0;top: 0;z-index: 1; pointer-events: none;" ></canvas>
+   <script type="text/javascript" src="//cdn.bootcss.com/animejs/2.2.0/anime.min.js"></script>
+   <script type="text/javascript" src="/js/fireworks.js"></script>
+<link rel="alternate" href="/atom.xml" title="随记" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">随记</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">记一记,所学,温故而知新</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li>
+        <li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li>
+        <li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a></li>
+        <li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ControllerAdvice%E4%B8%8E-ModelAttribute%E3%80%81-InitBinder%E6%B3%A8%E8%A7%A3%E6%B7%B7%E5%90%88%E4%BD%BF%E7%94%A8"><span class="nav-number">1.</span> <span class="nav-text">@ControllerAdvice与@ModelAttribute、@InitBinder注解混合使用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ModelAttribute%E6%B3%A8%E8%A7%A3%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="nav-number">1.1.</span> <span class="nav-text">@ModelAttribute注解的作用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#InitBinder%E6%B3%A8%E8%A7%A3%E6%B7%B7%E5%90%88%E4%BD%BF%E7%94%A8"><span class="nav-number">1.2.</span> <span class="nav-text">@InitBinder注解混合使用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%8A%A0%E8%BD%BD-RequestMappingHandlerAdapter%EF%BC%9F"><span class="nav-number">1.3.</span> <span class="nav-text">如何加载    RequestMappingHandlerAdapter？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DispatchServlet-properties%E4%B8%AD%E8%8E%B7%E5%8F%96HandlerAdapter"><span class="nav-number">1.4.</span> <span class="nav-text">DispatchServlet.properties中获取HandlerAdapter</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%95%E6%97%B6%E5%8A%A0%E8%BD%BD-ControllerAdvice%E4%B8%8E-ModelAttribute%E3%80%81-InitBinder%E6%B3%A8%E8%A7%A3%EF%BC%9F"><span class="nav-number">1.5.</span> <span class="nav-text">何时加载@ControllerAdvice与@ModelAttribute、@InitBinder注解？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%95%E6%97%B6%E8%B0%83%E7%94%A8-ModelAttribute%E3%80%81-InitBinder%E6%B3%A8%E8%A7%A3%E7%9A%84%E6%96%B9%E6%B3%95%E6%88%96%E5%8F%82%E6%95%B0%EF%BC%9F"><span class="nav-number">1.6.</span> <span class="nav-text">何时调用 @ModelAttribute、@InitBinder注解的方法或参数？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#getDataBinderFactory%E6%96%B9%E6%B3%95-getModelFactory%E6%96%B9%E6%B3%95"><span class="nav-number">1.7.</span> <span class="nav-text">getDataBinderFactory方法 getModelFactory方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#invokeModelAttributeMethods%E6%96%B9%E6%B3%95"><span class="nav-number">1.8.</span> <span class="nav-text">invokeModelAttributeMethods方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#findSessionAttributeArguments%E6%96%B9%E6%B3%95"><span class="nav-number">1.9.</span> <span class="nav-text">findSessionAttributeArguments方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#getMethodArgumentValues%E6%96%B9%E6%B3%95"><span class="nav-number">1.10.</span> <span class="nav-text">getMethodArgumentValues方法</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Ren zheng xiao"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Ren zheng xiao</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">38</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://blog.imder.top/2022/02/21/@ControllerAdvice%E4%B8%8E@ModelAttribute%E3%80%81@InitBinder%E6%B3%A8%E8%A7%A3%E6%B7%B7%E5%90%88%E4%BD%BF%E7%94%A8/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Ren zheng xiao">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="随记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          ExceptionHandler和ControllerAdvice注解分析
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2022-02-21 19:59:29" itemprop="dateCreated datePublished" datetime="2022-02-21T19:59:29+00:00">2022-02-21</time>
+    </span>
+      <span class="post-meta-item">
+        <span class="post-meta-item-icon">
+          <i class="far fa-calendar-check"></i>
+        </span>
+        <span class="post-meta-item-text">更新于</span>
+        <time title="修改时间：2024-03-28 16:43:20" itemprop="dateModified" datetime="2024-03-28T16:43:20+00:00">2024-03-28</time>
+      </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/JAVA/" itemprop="url" rel="index"><span itemprop="name">JAVA</span></a>
+        </span>
+          ，
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/JAVA/Spring/" itemprop="url" rel="index"><span itemprop="name">Spring</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h1 id="ControllerAdvice与-ModelAttribute、-InitBinder注解混合使用"><a href="#ControllerAdvice与-ModelAttribute、-InitBinder注解混合使用" class="headerlink" title="@ControllerAdvice与@ModelAttribute、@InitBinder注解混合使用"></a>@ControllerAdvice与@ModelAttribute、@InitBinder注解混合使用</h1><h2 id="ModelAttribute注解的作用"><a href="#ModelAttribute注解的作用" class="headerlink" title="@ModelAttribute注解的作用"></a>@ModelAttribute注解的作用</h2><ul>
+<li>用在方法的参数上<ul>
+<li>注解在参数上，会将客户端传递过来的参数按名称注入到指定对象中，</li>
+<li>并且会将这个对象自动加入ModelMap中</li>
+</ul>
+</li>
+<li>用在Controller的方法上<ul>
+<li>注解在方法上，会在每一个@RequestMapping标注的方法前执行，</li>
+<li>如果有返回值，则自动将该返回值加入到ModelMap中</li>
+</ul>
+</li>
+</ul>
+<h2 id="InitBinder注解混合使用"><a href="#InitBinder注解混合使用" class="headerlink" title="@InitBinder注解混合使用"></a>@InitBinder注解混合使用</h2><ul>
+<li>对数据绑定进行设置<br>  WebDataBinder中有很多方法可以对数据绑定进行具体的设置<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@InitBinder</span><br><span class="line">public void initBinder(WebDataBinder binder) &#123;</span><br><span class="line">	binder.setDisallowedFields(&quot;name&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<ul>
+<li>注册已有封装好的编辑器<ul>
+<li>由于前台传到controller里的值是String类型的，当往Model里Set这个值的时候，如果set的这个属性是个对象，Spring就会去找到对应的editor进行转换，然后再set进去</li>
+<li>Spring自己提供了大量的实现类（如下图所示的在org.springframwork.beans.propertyEditors下的所有editor），诸如CustomDateEditor ，CustomBooleanEditor，CustomNumberEditor等许多，基本上够用</li>
+</ul>
+</li>
+</ul>
+<h2 id="如何加载-RequestMappingHandlerAdapter？"><a href="#如何加载-RequestMappingHandlerAdapter？" class="headerlink" title="如何加载    RequestMappingHandlerAdapter？"></a>如何加载    RequestMappingHandlerAdapter？</h2><p>自己注入或者使用默认的</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">private void initHandlerAdapters(ApplicationContext context) &#123;</span><br><span class="line">	this.handlerAdapters = null;</span><br><span class="line"></span><br><span class="line">	if (this.detectAllHandlerAdapters) &#123; //true</span><br><span class="line">		// Find all HandlerAdapters in the ApplicationContext, including ancestor contexts.</span><br><span class="line">		Map&lt;String, HandlerAdapter&gt; matchingBeans =</span><br><span class="line">				BeanFactoryUtils.beansOfTypeIncludingAncestors(context, HandlerAdapter.class, true, false);//从容器中获取HandlerAdapter.class</span><br><span class="line">		if (!matchingBeans.isEmpty()) &#123;</span><br><span class="line">			this.handlerAdapters = new ArrayList&lt;&gt;(matchingBeans.values());</span><br><span class="line">			// We keep HandlerAdapters in sorted order.</span><br><span class="line">			AnnotationAwareOrderComparator.sort(this.handlerAdapters);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	else &#123;</span><br><span class="line">		try &#123;</span><br><span class="line">			HandlerAdapter ha = context.getBean(HANDLER_ADAPTER_BEAN_NAME, HandlerAdapter.class);</span><br><span class="line">			this.handlerAdapters = Collections.singletonList(ha);</span><br><span class="line">		&#125;</span><br><span class="line">		catch (NoSuchBeanDefinitionException ex) &#123;</span><br><span class="line">			// Ignore, we&#x27;ll add a default HandlerAdapter later.</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	// Ensure we have at least some HandlerAdapters, by registering</span><br><span class="line">	// default HandlerAdapters if no other adapters are found.</span><br><span class="line">	if (this.handlerAdapters == null) &#123;</span><br><span class="line">		this.handlerAdapters = getDefaultStrategies(context, HandlerAdapter.class);//从DispatchServlet.properties中获取</span><br><span class="line">		if (logger.isTraceEnabled()) &#123;</span><br><span class="line">			logger.trace(&quot;No HandlerAdapters declared for servlet &#x27;&quot; + getServletName() +</span><br><span class="line">					&quot;&#x27;: using default strategies from DispatcherServlet.properties&quot;);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line">	</span><br></pre></td></tr></table></figure>
+
+<h2 id="DispatchServlet-properties中获取HandlerAdapter"><a href="#DispatchServlet-properties中获取HandlerAdapter" class="headerlink" title="DispatchServlet.properties中获取HandlerAdapter"></a>DispatchServlet.properties中获取HandlerAdapter</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">org.springframework.web.servlet.HandlerAdapter=org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter,\</span><br><span class="line">	org.springframework.web.servlet.mvc.SimpleControllerHandlerAdapter,\</span><br><span class="line">	org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter,\</span><br><span class="line">	org.springframework.web.servlet.function.support.HandlerFunctionAdapter</span><br></pre></td></tr></table></figure>
+
+<h2 id="何时加载-ControllerAdvice与-ModelAttribute、-InitBinder注解？"><a href="#何时加载-ControllerAdvice与-ModelAttribute、-InitBinder注解？" class="headerlink" title="何时加载@ControllerAdvice与@ModelAttribute、@InitBinder注解？"></a>何时加载@ControllerAdvice与@ModelAttribute、@InitBinder注解？</h2><p>RequestMappingHandlerAdapter类实现了InitializingBean接口，在afterPropertiesSet方法中initControllerAdviceCache方法中加载</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">public static final MethodFilter INIT_BINDER_METHODS = method -&gt;</span><br><span class="line">			AnnotatedElementUtils.hasAnnotation(method, InitBinder.class);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">public static final MethodFilter MODEL_ATTRIBUTE_METHODS = method -&gt;</span><br><span class="line">		(!AnnotatedElementUtils.hasAnnotation(method, RequestMapping.class) &amp;&amp;</span><br><span class="line">				AnnotatedElementUtils.hasAnnotation(method, ModelAttribute.class));</span><br><span class="line"></span><br><span class="line">private void initControllerAdviceCache() &#123;</span><br><span class="line">	if (getApplicationContext() == null) &#123;</span><br><span class="line">		return;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//从容器中获取ControllerAdvice注解的bean</span><br><span class="line">	List&lt;ControllerAdviceBean&gt; adviceBeans = ControllerAdviceBean.findAnnotatedBeans(getApplicationContext());</span><br><span class="line"></span><br><span class="line">	List&lt;Object&gt; requestResponseBodyAdviceBeans = new ArrayList&lt;&gt;();</span><br><span class="line">	//遍历每个bean,找出InitBinder注解的方法放入initBinderAdviceCache里，找出ModelAttribute注解的方法放入modelAttributeAdviceCache</span><br><span class="line">	for (ControllerAdviceBean adviceBean : adviceBeans) &#123;</span><br><span class="line">		Class&lt;?&gt; beanType = adviceBean.getBeanType();</span><br><span class="line">		if (beanType == null) &#123;</span><br><span class="line">			throw new IllegalStateException(&quot;Unresolvable type for ControllerAdviceBean: &quot; + adviceBean);</span><br><span class="line">		&#125;</span><br><span class="line">		Set&lt;Method&gt; attrMethods = MethodIntrospector.selectMethods(beanType, MODEL_ATTRIBUTE_METHODS);</span><br><span class="line">		if (!attrMethods.isEmpty()) &#123;</span><br><span class="line">			this.modelAttributeAdviceCache.put(adviceBean, attrMethods);</span><br><span class="line">		&#125;</span><br><span class="line">		Set&lt;Method&gt; binderMethods = MethodIntrospector.selectMethods(beanType, INIT_BINDER_METHODS);</span><br><span class="line">		if (!binderMethods.isEmpty()) &#123;</span><br><span class="line">			this.initBinderAdviceCache.put(adviceBean, binderMethods);</span><br><span class="line">		&#125;</span><br><span class="line">		if (RequestBodyAdvice.class.isAssignableFrom(beanType) || ResponseBodyAdvice.class.isAssignableFrom(beanType)) &#123;</span><br><span class="line">			requestResponseBodyAdviceBeans.add(adviceBean);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	...省略</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="何时调用-ModelAttribute、-InitBinder注解的方法或参数？"><a href="#何时调用-ModelAttribute、-InitBinder注解的方法或参数？" class="headerlink" title="何时调用 @ModelAttribute、@InitBinder注解的方法或参数？"></a>何时调用 @ModelAttribute、@InitBinder注解的方法或参数？</h2><ul>
+<li>在RequestMappingHandlerAdapter对象调用handle方法中调用</li>
+<li>handle方法调用handleInternal方法,handleInternal方法调用invokeHandlerMethod方法</li>
+<li>invokeHandlerMethod 方法中getDataBinderFactory方法获取InitBinder注解的方法</li>
+<li>invokeHandlerMethod 方法中getModelFactory方法获取ModelAttribute注解的方法</li>
+<li>调用ModelFactory对象的initModel方法，initModel方法中调用invokeModelAttributeMethods方法，调用@ModelAttribute注解的方法</li>
+<li>调用ModelFactory对象的initModel方法，initModel方法中调用findSessionAttributeArguments方法，对@ModelAttribute注解的参数赋值</li>
+<li>invocableMethod.invokeAndHandle(webRequest, mavContainer)，在这个方法中调用invokeForRequest(),invokeForRequest()中调用getMethodArgumentValues()方法对参数进行了绑定</li>
+</ul>
+<h2 id="getDataBinderFactory方法-getModelFactory方法"><a href="#getDataBinderFactory方法-getModelFactory方法" class="headerlink" title="getDataBinderFactory方法 getModelFactory方法"></a>getDataBinderFactory方法 getModelFactory方法</h2><ul>
+<li>先从controller类获取@InitBinder注解的方法</li>
+<li>在从@ControllerAdvice注解的bean上获取@InitBinder注解的方法</li>
+<li>上述的方法组合并返回ModelFactory</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">private WebDataBinderFactory getDataBinderFactory(HandlerMethod handlerMethod) throws Exception &#123;</span><br><span class="line">	Class&lt;?&gt; handlerType = handlerMethod.getBeanType();</span><br><span class="line">	Set&lt;Method&gt; methods = this.initBinderCache.get(handlerType);</span><br><span class="line">	if (methods == null) &#123;</span><br><span class="line">		methods = MethodIntrospector.selectMethods(handlerType, INIT_BINDER_METHODS);</span><br><span class="line">		this.initBinderCache.put(handlerType, methods);</span><br><span class="line">	&#125;</span><br><span class="line">	List&lt;InvocableHandlerMethod&gt; initBinderMethods = new ArrayList&lt;&gt;();</span><br><span class="line">	// Global methods first</span><br><span class="line">	this.initBinderAdviceCache.forEach((controllerAdviceBean, methodSet) -&gt; &#123;</span><br><span class="line">		if (controllerAdviceBean.isApplicableToBeanType(handlerType)) &#123;</span><br><span class="line">			Object bean = controllerAdviceBean.resolveBean();</span><br><span class="line">			for (Method method : methodSet) &#123;</span><br><span class="line">				initBinderMethods.add(createInitBinderMethod(bean, method));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;);</span><br><span class="line">	for (Method method : methods) &#123;</span><br><span class="line">		Object bean = handlerMethod.getBean();</span><br><span class="line">		initBinderMethods.add(createInitBinderMethod(bean, method));</span><br><span class="line">	&#125;</span><br><span class="line">	return createDataBinderFactory(initBinderMethods);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>先从controller类获取@ModelAttribute注解的方法</li>
+<li>在从@ControllerAdvice注解的bean上获取@ModelAttribute注解的方法</li>
+<li>上述的方法组合并返回ModelFactory<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">private ModelFactory getModelFactory(HandlerMethod handlerMethod, WebDataBinderFactory binderFactory) &#123;</span><br><span class="line">	SessionAttributesHandler sessionAttrHandler = getSessionAttributesHandler(handlerMethod);</span><br><span class="line">	Class&lt;?&gt; handlerType = handlerMethod.getBeanType();</span><br><span class="line">	Set&lt;Method&gt; methods = this.modelAttributeCache.get(handlerType);</span><br><span class="line">	if (methods == null) &#123;</span><br><span class="line">		methods = MethodIntrospector.selectMethods(handlerType, MODEL_ATTRIBUTE_METHODS);</span><br><span class="line">		this.modelAttributeCache.put(handlerType, methods);</span><br><span class="line">	&#125;</span><br><span class="line">	List&lt;InvocableHandlerMethod&gt; attrMethods = new ArrayList&lt;&gt;();</span><br><span class="line">	// Global methods first</span><br><span class="line">	this.modelAttributeAdviceCache.forEach((controllerAdviceBean, methodSet) -&gt; &#123;</span><br><span class="line">		if (controllerAdviceBean.isApplicableToBeanType(handlerType)) &#123;</span><br><span class="line">			Object bean = controllerAdviceBean.resolveBean();</span><br><span class="line">			for (Method method : methodSet) &#123;</span><br><span class="line">				attrMethods.add(createModelAttributeMethod(binderFactory, bean, method));</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;);</span><br><span class="line">	for (Method method : methods) &#123;</span><br><span class="line">		Object bean = handlerMethod.getBean();</span><br><span class="line">		attrMethods.add(createModelAttributeMethod(binderFactory, bean, method));</span><br><span class="line">	&#125;</span><br><span class="line">	return new ModelFactory(attrMethods, binderFactory, sessionAttrHandler);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="invokeModelAttributeMethods方法"><a href="#invokeModelAttributeMethods方法" class="headerlink" title="invokeModelAttributeMethods方法"></a>invokeModelAttributeMethods方法</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">private void invokeModelAttributeMethods(NativeWebRequest request, ModelAndViewContainer container)</span><br><span class="line">			throws Exception &#123;</span><br><span class="line"></span><br><span class="line">	while (!this.modelMethods.isEmpty()) &#123;</span><br><span class="line">		InvocableHandlerMethod modelMethod = getNextModelMethod(container).getHandlerMethod();</span><br><span class="line">		ModelAttribute ann = modelMethod.getMethodAnnotation(ModelAttribute.class);</span><br><span class="line">		Assert.state(ann != null, &quot;No ModelAttribute annotation&quot;);</span><br><span class="line">		if (container.containsAttribute(ann.name())) &#123;</span><br><span class="line">			if (!ann.binding()) &#123;</span><br><span class="line">				container.setBindingDisabled(ann.name());</span><br><span class="line">			&#125;</span><br><span class="line">			continue;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		Object returnValue = modelMethod.invokeForRequest(request, container);</span><br><span class="line">		if (modelMethod.isVoid()) &#123;</span><br><span class="line">			if (StringUtils.hasText(ann.value())) &#123;</span><br><span class="line">				if (logger.isDebugEnabled()) &#123;</span><br><span class="line">					logger.debug(&quot;Name in @ModelAttribute is ignored because method returns void: &quot; +</span><br><span class="line">							modelMethod.getShortLogMessage());</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			continue;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		String returnValueName = getNameForReturnValue(returnValue, modelMethod.getReturnType());</span><br><span class="line">		if (!ann.binding()) &#123;</span><br><span class="line">			container.setBindingDisabled(returnValueName);</span><br><span class="line">		&#125;</span><br><span class="line">		if (!container.containsAttribute(returnValueName)) &#123;</span><br><span class="line">			container.addAttribute(returnValueName, returnValue);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="findSessionAttributeArguments方法"><a href="#findSessionAttributeArguments方法" class="headerlink" title="findSessionAttributeArguments方法"></a>findSessionAttributeArguments方法</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">private List&lt;String&gt; findSessionAttributeArguments(HandlerMethod handlerMethod) &#123;</span><br><span class="line">	List&lt;String&gt; result = new ArrayList&lt;&gt;();</span><br><span class="line">	for (MethodParameter parameter : handlerMethod.getMethodParameters()) &#123;</span><br><span class="line">		if (parameter.hasParameterAnnotation(ModelAttribute.class)) &#123;</span><br><span class="line">			String name = getNameForParameter(parameter);</span><br><span class="line">			Class&lt;?&gt; paramType = parameter.getParameterType();</span><br><span class="line">			if (this.sessionAttributesHandler.isHandlerSessionAttribute(name, paramType)) &#123;</span><br><span class="line">				result.add(name);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	return result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="getMethodArgumentValues方法"><a href="#getMethodArgumentValues方法" class="headerlink" title="getMethodArgumentValues方法"></a>getMethodArgumentValues方法</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">protected Object[] getMethodArgumentValues(NativeWebRequest request, @Nullable ModelAndViewContainer mavContainer,</span><br><span class="line">			Object... providedArgs) throws Exception &#123;</span><br><span class="line"></span><br><span class="line">	MethodParameter[] parameters = getMethodParameters();</span><br><span class="line">	if (ObjectUtils.isEmpty(parameters)) &#123;</span><br><span class="line">		return EMPTY_ARGS;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	Object[] args = new Object[parameters.length];</span><br><span class="line">	for (int i = 0; i &lt; parameters.length; i++) &#123;</span><br><span class="line">		MethodParameter parameter = parameters[i];</span><br><span class="line">		parameter.initParameterNameDiscovery(this.parameterNameDiscoverer);</span><br><span class="line">		args[i] = findProvidedArgument(parameter, providedArgs);</span><br><span class="line">		if (args[i] != null) &#123;</span><br><span class="line">			continue;</span><br><span class="line">		&#125;</span><br><span class="line">		if (!this.resolvers.supportsParameter(parameter)) &#123;</span><br><span class="line">			throw new IllegalStateException(formatArgumentError(parameter, &quot;No suitable resolver&quot;));</span><br><span class="line">		&#125;</span><br><span class="line">		try &#123;</span><br><span class="line">			args[i] = this.resolvers.resolveArgument(parameter, mavContainer, request, this.dataBinderFactory);</span><br><span class="line">		&#125;</span><br><span class="line">		catch (Exception ex) &#123;</span><br><span class="line">			// Leave stack trace for later, exception may actually be resolved and handled...</span><br><span class="line">			if (logger.isDebugEnabled()) &#123;</span><br><span class="line">				String exMsg = ex.getMessage();</span><br><span class="line">				if (exMsg != null &amp;&amp; !exMsg.contains(parameter.getExecutable().toGenericString())) &#123;</span><br><span class="line">					logger.debug(formatArgumentError(parameter, exMsg));</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			throw ex;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	return args;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="reward-container">
+  <div>坚持原创技术分享，您的支持将鼓励我继续创作！</div>
+  <button>
+    赞赏
+  </button>
+  <div class="post-reward">
+      <div>
+        <img src="/images/wechatpay.jpg" alt="Ren zheng xiao 微信">
+        <span>微信</span>
+      </div>
+      <div>
+        <img src="/images/alipay.jpg" alt="Ren zheng xiao 支付宝">
+        <span>支付宝</span>
+      </div>
+
+  </div>
+</div>
+
+          <div class="post-tags">
+              <a href="/tags/JAVA/" rel="tag"># JAVA</a>
+              <a href="/tags/Spring/" rel="tag"># Spring</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/02/21/ExceptionHandler%E5%92%8CControllerAdvice%E6%B3%A8%E8%A7%A3%E5%88%86%E6%9E%90/" rel="prev" title="ExceptionHandler和ControllerAdvice注解分析">
+                  <i class="fa fa-chevron-left"></i> ExceptionHandler和ControllerAdvice注解分析
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2022/02/22/springgateway/" rel="next" title="Springcloud-gateway">
+                  Springcloud-gateway <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="beian"><a href="https://beian.miit.gov.cn/" rel="noopener" target="_blank">苏ICP备14022081号-4 </a>
+  </div>
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ren zheng xiao</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/mist/" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
